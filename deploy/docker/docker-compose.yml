@@ -1,0 +1,52 @@
+# DocuAX 개발 환경.
+# vLLM은 GPU 의존이라 기본 포함하지 않음 — TenOS는 별도 인스턴스를 .env로 가리키거나 LLM_PROVIDER=mock 사용.
+
+services:
+  backend:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.backend
+    environment:
+      APP_ENV: development
+      APP_DEBUG: "true"
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      TENOS_BASE_URL: ${TENOS_BASE_URL:-http://host.docker.internal:8001/v1}
+      TENOS_MODEL: ${TENOS_MODEL:-honey90/TenOS-Ko-28B}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      DATABASE_URL: postgresql+asyncpg://docuax:docuax@db:5432/docuax
+      CORS_ORIGINS: http://localhost:3000
+      CHROMA_PERSIST_DIR: /data/chroma
+      STORAGE_LOCAL_DIR: /data/documents
+    volumes:
+      - docuax-data:/data
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.frontend
+    environment:
+      NEXT_PUBLIC_API_BASE: http://backend:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: docuax
+      POSTGRES_PASSWORD: docuax
+      POSTGRES_DB: docuax
+    volumes:
+      - docuax-db:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  docuax-data:
+  docuax-db:

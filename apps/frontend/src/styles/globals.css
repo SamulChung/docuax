@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  @apply bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100;
+  font-feature-settings: "kern", "liga";
+}
+
+/* 검토 표시 — 빨강·파랑·노랑 */
+.review-red { background: rgba(192, 57, 43, 0.18); border-bottom: 2px solid #C0392B; }
+.review-blue { background: rgba(31, 91, 175, 0.16); border-bottom: 2px solid #1F5BAF; }
+.review-yellow { background: rgba(240, 180, 41, 0.25); border-bottom: 2px solid #F0B429; }
+
+/* N1/N2/N3 점프 시 하이라이트 플래시 */
+@keyframes jump-flash-anim {
+  0% { box-shadow: 0 0 0 0 rgba(30, 39, 97, 0.65); transform: scale(1); }
+  35% { box-shadow: 0 0 0 6px rgba(30, 39, 97, 0); transform: scale(1.04); }
+  100% { box-shadow: 0 0 0 0 rgba(30, 39, 97, 0); transform: scale(1); }
+}
+.jump-flash {
+  animation: jump-flash-anim 1.2s ease-out;
+  outline: 2px solid #1E2761;
+  outline-offset: 2px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+/* 매크로 적용 후 블록 변경 깜빡임 */
+@keyframes pulse-once-anim {
+  0% { background-color: rgba(16, 185, 129, 0.35); }
+  100% { background-color: transparent; }
+}
+.animate-pulse-once {
+  animation: pulse-once-anim 1.4s ease-out;
+}
+
+/* 블록 wrapper 호버·선택 상태 */
+.block-wrapper {
+  position: relative;
+}
+.block-wrapper:hover {
+  cursor: pointer;
+}
+
+/* 미리보기 영역 인쇄-스타일 */
+.preview {
+  @apply bg-white text-neutral-900 shadow-sm;
+  font-family: '맑은 고딕', 'Malgun Gothic', sans-serif;
+  line-height: 1.6;
+}
+
+.preview h1 { @apply text-2xl font-bold mt-4 mb-2; }
+.preview h2 { @apply text-xl font-bold mt-3 mb-2; }
+.preview h3 { @apply text-lg font-bold mt-3 mb-1; }
+.preview p { @apply my-1; }
+.preview .li-1 { @apply pl-0; }
+.preview .li-2 { @apply pl-6; }
+.preview .li-3 { @apply pl-12; }
+.preview .li-4 { @apply pl-16; }
+.preview .quote { @apply border-l-4 border-brand pl-3 italic text-neutral-700; }
+.preview .code { @apply bg-neutral-100 dark:bg-neutral-800 p-2 font-mono text-sm; }
+.preview table { @apply border-collapse my-2 w-full; }
+.preview table.bordered td, .preview table.bordered th { @apply border border-neutral-400 p-1.5; }
+.preview table.dashed td, .preview table.dashed th { @apply border border-dashed border-neutral-400 p-1.5; }
+.preview table.grid td, .preview table.grid th { @apply border border-neutral-300 p-1.5; }
+.preview table th { @apply bg-neutral-100 dark:bg-neutral-800 font-semibold; }
