@@ -56,3 +56,17 @@ async def test_extract_fallback_on_corrupt_pptx():
     # 실패 시 minimal 테마 폴백 반환
     assert theme["background"] == "#fafafa"
     assert theme["source"] == "upload"
+
+
+@pytest.mark.asyncio
+async def test_extract_from_image_returns_fallback_when_provider_returns_invalid(mocker):
+    """이미지 Vision 분석 실패(mock provider 비JSON 반환) 시 fallback 반환."""
+    # mock provider가 비JSON을 반환하므로 fallback이 반환되어야 한다
+    from app.services.theme_extractor import extract_theme_from_image
+
+    result = await extract_theme_from_image(b"fake-image-bytes", "image/png")
+
+    assert "background" in result
+    assert "primary" in result
+    assert "source" in result
+    assert result["source"] == "upload"

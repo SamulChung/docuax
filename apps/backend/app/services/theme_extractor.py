@@ -67,7 +67,9 @@ async def extract_theme_from_pptx(pptx_bytes: bytes) -> dict[str, Any]:
                         if run.font.name:
                             font_family = run.font.name
                         if run.font.size:
-                            heading_size = int(run.font.size / 12700)  # EMU → pt
+                            pt = int(run.font.size / 12700)  # EMU → pt
+                            if 8 <= pt <= 72:  # 유효 범위만 사용
+                                heading_size = pt
                         break
                     break
                 break
@@ -88,7 +90,12 @@ async def extract_theme_from_pptx(pptx_bytes: bytes) -> dict[str, Any]:
 
 
 async def extract_theme_from_image(image_bytes: bytes, mime: str) -> dict[str, Any]:
-    """Claude Vision으로 이미지에서 색상 팔레트/스타일을 분석한다."""
+    """이미지에서 색상 팔레트/스타일을 분석한다.
+
+    현재 LLM provider가 텍스트 전용 ChatMessage를 사용하므로, Vision API 호출이
+    실패하면 _MINIMAL_THEME 폴백을 반환한다. Claude Vision multimodal 지원 시
+    ChatMessage에 structured content 블록을 추가해 개선 가능.
+    """
     import base64
 
     from app.providers.llm import ChatMessage, get_llm_provider
