@@ -195,13 +195,15 @@ function getAuthToken(): string | null {
 
 export function setAuthToken(token: string | null): void {
   if (typeof window === "undefined") return;
+  // Secure 속성은 HTTPS(프로덕션)에서만 적용, HTTP(개발) 환경에서는 제외
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
   if (token) {
     localStorage.setItem("docuax.access_token", token);
     // middleware가 서버에서 읽을 수 있도록 쿠키에도 동기화
-    document.cookie = `docuax_token=${token}; path=/; max-age=86400; SameSite=Lax`;
+    document.cookie = `docuax_token=${token}; path=/; max-age=86400; SameSite=Lax${secure}`;
   } else {
     localStorage.removeItem("docuax.access_token");
-    document.cookie = `docuax_token=; path=/; max-age=0; SameSite=Lax`;
+    document.cookie = `docuax_token=; path=/; max-age=0; SameSite=Lax${secure}`;
   }
   window.dispatchEvent(new CustomEvent("docuax:auth-changed"));
 }
