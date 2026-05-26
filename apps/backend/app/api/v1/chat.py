@@ -29,6 +29,7 @@ from app.providers.llm import get_llm_provider
 from app.providers.llm.base import ChatMessage as ProviderChatMessage, ProviderUnavailable
 from app.providers.llm.registry import _build_single as build_specific_provider
 from app.services.key_vault import decrypt
+from app.services.organization_profile import get_profile as get_org_profile
 
 router = APIRouter()
 log = get_logger(__name__)
@@ -76,6 +77,11 @@ class ChatRequest(BaseModel):
         default_factory=list,
         max_length=50,
         description="사용자가 변환결과에서 선택한 블록 ID. AI 응답 우선 대상.",
+    )
+    # ─── 조직 전용 AI 비서 ───────────────────────────────────────────────────
+    organization_id: str | None = Field(
+        None,
+        description="조직 프로파일 ID. 설정된 ai_system_prompt 가 있으면 시스템 메시지에 주입.",
     )
 
 
@@ -242,6 +248,16 @@ async def chat(
                 f"\n\n[사용자가 선택한 블록] {', '.join(body.selected_block_ids[:20])}\n"
                 "위 ID들이 현재 사용자의 집중 대상입니다. 명시적 지정이 없으면 이 블록들을 기준으로 답하세요."
             )
+
+        # 조직 전용 AI 비서 인스트럭션 주입
+        if body.organization_id:
+            org = get_org_profile(body.organization_id)
+            if org and org.ai_system_prompt.strip():
+                persona = f" ({org.ai_persona_name})" if org.ai_persona_name.strip() else ""
+                system_text += (
+                    f"\n\n[조직 전용 AI 비서 지침{persona} — {org.name}]\n"
+                    + org.ai_system_prompt.strip()
+                )
 
         msgs.append(ProviderChatMessage(role="system", content=system_text))
     msgs.extend(ProviderChatMessage(role=m.role, content=m.content) for m in body.messages)

@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Download, FileText } from "lucide-react";
 
 import { LogoSymbol } from "@/components/Logo";
 import { convertDocument, downloadUrl, executeMacro, listMacros } from "@/lib/api";
+import { copyPreviewToClipboard } from "@/lib/clipboard";
 import { getOrganizationId } from "@/lib/user";
 import { useWorkspace } from "@/store/workspace";
 
@@ -13,6 +14,14 @@ import { HeavyConvertPanel } from "./HeavyConvertPanel";
 import { MacroGrid } from "./MacroGrid";
 import { MACRO_PARAM_SCHEMAS, MacroParamDialog, MacroParamSchema } from "./MacroParamDialog";
 import { WorkerConvertPanel } from "./WorkerConvertPanel";
+
+const CHANNEL_PRESETS = [
+  { id: "instagram", label: "인스타그램", emoji: "📸", hint: "MZ톤 변환 후 클립보드" },
+  { id: "band",      label: "밴드·카카오", emoji: "💬", hint: "60대톤 변환 후 클립보드" },
+  { id: "email",     label: "이메일",     emoji: "📧", hint: "PDF 다운로드" },
+  { id: "blog",      label: "블로그",     emoji: "✍️", hint: "HTML+텍스트 클립보드" },
+] as const;
+type ChannelId = (typeof CHANNEL_PRESETS)[number]["id"];
 
 const TABS = [
   { id: "convert", label: "변환", short: "변환" },
@@ -105,6 +114,21 @@ export function RemoteControl({
         setPendingDialog(MACRO_PARAM_SCHEMAS[macroId]);
         return;
       }
+      // GONGMUN_POLISH — T5·T16·S12·S13·B20 순차 실행 (공문 원클릭 정돈)
+      if (macroId === "GONGMUN_POLISH") {
+        const seq = ["T5", "T16", "S12", "S13", "B20"];
+        for (const id of seq) {
+          const docId = useWorkspace.getState().preview?.document_id;
+          if (!docId) break;
+          try {
+            const res = await executeMacro({ macro_id: id, document_id: docId, params });
+            setPreview(res.preview);
+          } catch {
+            // 개별 매크로 실패해도 나머지 계속 실행
+          }
+        }
+        return;
+      }
       // N1/N2/N3는 백엔드 호출 없이 프론트 스토어에서 직접 점프 — 즉각 반응
       if (macroId === "N1" || macroId === "N2" || macroId === "N3") {
         const color = macroId === "N1" ? "red" : macroId === "N2" ? "blue" : "yellow";
@@ -193,6 +217,43 @@ export function RemoteControl({
       }
     },
     [preview, setPreview]
+  );
+
+  const handleChannelExport = useCallback(
+    async (channelId: ChannelId) => {
+      if (!useWorkspace.getState().preview?.document_id) {
+        alert("먼저 변환을 실행하세요 (Ctrl+Enter)");
+        return;
+      }
+      if (channelId === "instagram") {
+        await handleMacroExecute("G16", { target_age: "MZ" });
+        const docId = useWorkspace.getState().preview?.document_id;
+        if (!docId) return;
+        try {
+          await copyPreviewToClipboard(docId);
+          alert("인스타그램 캡션이 클립보드에 복사됐습니다 📸");
+        } catch (e) { alert(`클립보드 복사 실패: ${(e as Error).message}`); }
+      } else if (channelId === "band") {
+        await handleMacroExecute("G16", { target_age: "60대" });
+        const docId = useWorkspace.getState().preview?.document_id;
+        if (!docId) return;
+        try {
+          await copyPreviewToClipboard(docId);
+          alert("밴드·카카오용 텍스트가 클립보드에 복사됐습니다 💬");
+        } catch (e) { alert(`클립보드 복사 실패: ${(e as Error).message}`); }
+      } else if (channelId === "email") {
+        const docId = useWorkspace.getState().preview?.document_id;
+        if (docId) window.open(downloadUrl(docId, "pdf"), "_blank");
+      } else if (channelId === "blog") {
+        const docId = useWorkspace.getState().preview?.document_id;
+        if (!docId) return;
+        try {
+          await copyPreviewToClipboard(docId);
+          alert("블로그용 HTML+텍스트가 클립보드에 복사됐습니다 ✍️");
+        } catch (e) { alert(`클립보드 복사 실패: ${(e as Error).message}`); }
+      }
+    },
+    [handleMacroExecute]
   );
 
   // 전역 단축키
@@ -368,6 +429,33 @@ export function RemoteControl({
                 ⓘ 한컴 HWPX는 한국 공문 표준이라 색상·강조가 보수적입니다. 시각 디자인을 살리려면 DOCX·PDF가 더 멋집니다.
               </div>
             )}
+
+            {/* 1:N 채널 내보내기 프리셋 */}
+            <div className="mt-3 border-t border-neutral-200 pt-3 dark:border-neutral-800">
+              <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+                채널 내보내기
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                {CHANNEL_PRESETS.map((ch) => (
+                  <button
+                    key={ch.id}
+                    onClick={() => void handleChannelExport(ch.id)}
+                    disabled={!preview}
+                    className={`flex flex-col items-start rounded-md border px-2.5 py-2 text-left transition-all disabled:opacity-40 ${
+                      preview
+                        ? "border-neutral-200 bg-white hover:border-brand hover:bg-brand/5 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:border-brand"
+                        : "border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950"
+                    }`}
+                  >
+                    <span className="text-sm">{ch.emoji}</span>
+                    <span className="mt-0.5 text-[11px] font-semibold text-neutral-800 dark:text-neutral-200">
+                      {ch.label}
+                    </span>
+                    <span className="text-[9px] text-neutral-500">{ch.hint}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <div className="mt-3 border-t border-neutral-200 pt-3 text-[11px] font-semibold uppercase tracking-wide text-neutral-500 dark:border-neutral-800">
               편리 매크로 (P1~P5)

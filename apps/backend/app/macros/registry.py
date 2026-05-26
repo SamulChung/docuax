@@ -73,7 +73,7 @@ def get_macro_registry() -> MacroRegistry:
     log.info("매크로 레지스트리 초기화 완료", **stats)
 
     expected = {
-        "T": 25, "S": 15, "B": 20, "G": 15, "N": 10, "R": 10, "P": 5,
+        "T": 25, "S": 15, "B": 20, "G": 16, "N": 10, "R": 10, "P": 5,
     }
     for cat, count in expected.items():
         if stats.get(cat, 0) != count:
@@ -84,6 +84,6 @@ def get_macro_registry() -> MacroRegistry:
                 actual=stats.get(cat, 0),
             )
 
-    if stats["total"] != 100:
-        log.warning("매크로 총 개수 100 미달", total=stats["total"])
+    if stats["total"] != 101:
+        log.warning("매크로 총 개수 불일치", total=stats["total"], expected=101)
     return registry

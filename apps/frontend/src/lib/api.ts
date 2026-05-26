@@ -702,6 +702,8 @@ export async function sendChat(input: {
   preview_summary?: string;
   /** 사용자가 변환결과에서 선택한 블록 ID 목록 */
   selected_block_ids?: string[];
+  /** 조직 프로파일 ID — ai_system_prompt 주입용 */
+  organization_id?: string | null;
 }): Promise<ChatResult> {
   return http<ChatResult>("/chat", {
     method: "POST",
@@ -714,6 +716,7 @@ export async function sendChat(input: {
       source_title: input.source_title ?? "",
       preview_summary: input.preview_summary ?? "",
       selected_block_ids: input.selected_block_ids ?? [],
+      organization_id: input.organization_id ?? null,
     }),
   });
 }
@@ -792,6 +795,8 @@ export interface OrganizationProfile {
   prompt_label: string;
   default_template_id: string | null;
   db_organization_id: string | null;
+  ai_persona_name: string;
+  ai_system_prompt: string;
   is_public: boolean;
   notes: string;
   created_by: string;

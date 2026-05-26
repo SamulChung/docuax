@@ -84,6 +84,19 @@ export const MACRO_PARAM_SCHEMAS: Record<string, MacroParamSchema> = {
       },
     ],
   },
+  G16: {
+    macroId: "G16",
+    title: "세대별 톤 변환 (役關目條分 · 條 조건)",
+    fields: [
+      {
+        key: "target_age",
+        label: "대상 연령층",
+        type: "select",
+        default: "60대",
+        options: ["60대", "40대", "MZ"],
+      },
+    ],
+  },
 };
 
 interface Props {

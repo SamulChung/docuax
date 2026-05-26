@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { Download, FileText, Zap } from "lucide-react";
+import { Download, FileText, Sparkles, Zap } from "lucide-react";
 
 import { downloadUrl } from "@/lib/api";
 import { OrganizationPicker } from "@/components/organizations/OrganizationPicker";
@@ -144,6 +144,22 @@ export function HeavyConvertPanel({ onConvert, onMacro, busy }: HeavyConvertPane
               ))}
             </div>
           </div>
+
+          {/* 공문 원클릭 정돈 — T5+T16+S12+S13+B20 순차 실행 */}
+          <button
+            onClick={() => onMacro("GONGMUN_POLISH")}
+            disabled={busy}
+            className="flex w-full items-center justify-between rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2.5 text-xs transition-all hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-800 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/70"
+            title="T5 셀병합·T16 줄간격·S12 들여쓰기·S13 행간·B20 범피스제거 순차 적용"
+          >
+            <span className="flex items-center gap-2 font-semibold text-emerald-800 dark:text-emerald-300">
+              <Sparkles size={13} />
+              공문 원클릭 정돈
+            </span>
+            <span className="text-[10px] font-normal text-emerald-600 dark:text-emerald-400">
+              범피스 없이 농협 표준 공문으로
+            </span>
+          </button>
 
           {/* 검토 점프 — 헤비의 핵심 */}
           <ReviewJump onJump={onMacro} />

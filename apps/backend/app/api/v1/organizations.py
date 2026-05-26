@@ -67,6 +67,9 @@ class ProfileCreate(BaseModel):
     default_template_id: str | None = None
     db_organization_id: str | None = None
 
+    ai_persona_name: str = ""
+    ai_system_prompt: str = ""
+
     is_public: bool = False
     notes: str = ""
 
@@ -93,6 +96,9 @@ class ProfileUpdate(BaseModel):
     prompt_label: str | None = None
     default_template_id: str | None = None
     db_organization_id: str | None = None
+    ai_persona_name: str | None = None
+    ai_system_prompt: str | None = None
+
     is_public: bool | None = None
     notes: str | None = None
 

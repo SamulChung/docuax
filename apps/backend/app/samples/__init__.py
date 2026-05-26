@@ -23,7 +23,7 @@ _HERE = Path(__file__).parent
 class SampleMeta(BaseModel):
     id: str
     title: str
-    category: Literal["공문", "보고서", "제안서", "회의록", "메모", "사업기획", "기타"]
+    category: Literal["공문", "보고서", "제안서", "회의록", "메모", "사업기획", "콘텐츠", "기타"]
     description: str
     persona: Literal["worker", "heavy", "any"] = "any"
     icon: str = "📄"  # 픽커에 표시될 이모지
@@ -193,6 +193,35 @@ SAMPLES: list[SampleMeta] = [
         persona="worker",
         icon="✏️",
         tags=["메모", "스프린트", "팀"],
+    ),
+
+    # ── 콘텐츠 (뉴스레터·영상기획·보도자료) ──
+    SampleMeta(
+        id="newsletter-template",
+        title="조합원 뉴스레터 (役關目條分 + PASA)",
+        category="콘텐츠",
+        description="역관목조분 5요소 + PASA 4단 메시지 구조 — 농협·공공기관 뉴스레터 표준 골격",
+        persona="worker",
+        icon="📧",
+        tags=["뉴스레터", "농협", "역관목조분", "PASA", "홍보"],
+    ),
+    SampleMeta(
+        id="video-plan-template",
+        title="홍보 영상 기획서 (1분 숏폼)",
+        category="콘텐츠",
+        description="후크 0~3초·메시지 3~50초·CTA 50~60초 — 9컷 스토리보드 + 자막 5원칙",
+        persona="worker",
+        icon="🎬",
+        tags=["영상기획", "숏폼", "스토리보드", "SNS"],
+    ),
+    SampleMeta(
+        id="press-release-template",
+        title="보도자료 (언론 배포용)",
+        category="콘텐츠",
+        description="제목·부제목·본문·인용구·담당자 연락처 — A4 1.5페이지 표준 보도자료 양식",
+        persona="worker",
+        icon="📰",
+        tags=["보도자료", "홍보", "언론", "PR"],
     ),
 ]
 

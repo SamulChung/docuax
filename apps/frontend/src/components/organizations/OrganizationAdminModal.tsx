@@ -325,6 +325,29 @@ export function OrganizationAdminModal({ onClose, onChange }: Props) {
                     </Field>
                   </Section>
 
+                  <Section title="AI 비서 설정">
+                    <Field label="AI 비서 이름 (선택)">
+                      <input
+                        value={draft.ai_persona_name ?? ""}
+                        placeholder="예: 농협 공문 비서, 경인청 안내 도우미"
+                        onChange={(e) => update("ai_persona_name", e.target.value)}
+                        className="w-full rounded border border-neutral-200 px-2 py-1 dark:border-neutral-700 dark:bg-neutral-900"
+                      />
+                    </Field>
+                    <Field label="조직 전용 AI 인스트럭션 (선택)">
+                      <textarea
+                        value={draft.ai_system_prompt ?? ""}
+                        placeholder={"예:\n- 농협 브랜드 가이드라인 준수\n- 공문 작성 시 역관목조분 框架 적용\n- 외부 기관명 언급 금지"}
+                        onChange={(e) => update("ai_system_prompt", e.target.value)}
+                        rows={5}
+                        className="w-full rounded border border-neutral-200 px-2 py-1 font-mono text-[10px] dark:border-neutral-700 dark:bg-neutral-900"
+                      />
+                      <span className="mt-0.5 block text-[9px] text-neutral-400">
+                        이 텍스트는 채팅 AI의 시스템 프롬프트 끝에 자동으로 추가됩니다.
+                      </span>
+                    </Field>
+                  </Section>
+
                   <Section title="관리자 메모">
                     <textarea
                       value={draft.notes ?? ""}

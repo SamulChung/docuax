@@ -35,6 +35,9 @@ class DocumentClass(StrEnum):
     PROPOSAL = "제안서"
     MEMO = "메모"
     MINUTES = "회의록"
+    NEWSLETTER = "뉴스레터"
+    VIDEO_PLAN = "영상기획서"
+    PRESS_RELEASE = "보도자료"
     GENERAL = "일반"
 
 

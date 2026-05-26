@@ -86,6 +86,10 @@ class OrganizationProfile(BaseModel):
     # 변환 시 이 프로파일을 가진 사용자의 조직 ID (DB Organization 와 매핑 — 선택)
     db_organization_id: str | None = None
 
+    # ── 조직 전용 AI 비서 ──
+    ai_persona_name: str = ""  # AI 비서 이름 (예: "농협 공문 비서")
+    ai_system_prompt: str = ""  # 조직 전용 시스템 인스트럭션 (채팅 시 자동 주입)
+
     # ── 운영 ──
     is_public: bool = False  # True면 비로그인 사용자도 변환 시 선택 가능 (DocuAX가 큐레이션한 공식 양식)
     notes: str = ""  # 관리자 메모

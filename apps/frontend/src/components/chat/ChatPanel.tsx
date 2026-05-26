@@ -2,9 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  ChevronDown,
+  ChevronUp,
   ClipboardCopy,
   FileInput,
   FileText,
+  LayoutTemplate,
   Loader2,
   MessageCircle,
   Minimize2,
@@ -33,6 +36,43 @@ const SUGGESTIONS_WITH_CONTEXT = [
   "이 문서를 한국 공문 4단계 글머리로 다시 정리해줘",
 ];
 
+// ── 요정분생설 5대 출력 모드 ────────────────────────────────────────────────
+const OUTPUT_MODES = [
+  { id: "요", label: "要 요약", hint: "핵심만 압축", color: "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950 dark:text-sky-300" },
+  { id: "정", label: "精 정리", hint: "체계적으로 정돈", color: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300" },
+  { id: "분", label: "分 분석", hint: "원인·구조 분석", color: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950 dark:text-violet-300" },
+  { id: "생", label: "生 생성", hint: "새 콘텐츠 만들기", color: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300" },
+  { id: "설", label: "說 설명", hint: "개념·과정 풀이", color: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950 dark:text-rose-300" },
+] as const;
+
+type OutputModeId = (typeof OUTPUT_MODES)[number]["id"] | null;
+
+// ── 역관목조분 5요소 ─────────────────────────────────────────────────────────
+const YOGMCP_FIELDS = [
+  { key: "role",       label: "役 역할", char: "役", placeholder: "10년 경력 농협 홍보 담당자" },
+  { key: "domain",     label: "關 분야", char: "關", placeholder: "뉴스레터 / 공문 / 보도자료" },
+  { key: "purpose",    label: "目 목적", char: "目", placeholder: "조합원 출자배당 신청 유도" },
+  { key: "conditions", label: "條 조건", char: "條", placeholder: "60대 톤 · 정치 금지 · 600자" },
+  { key: "volume",     label: "分 분량", char: "分", placeholder: "5섹션 구조 · 표 포함" },
+] as const;
+
+type YogmcpKey = (typeof YOGMCP_FIELDS)[number]["key"];
+type YogmcpFields = Record<YogmcpKey, string>;
+
+function composeYogmcpPrompt(fields: YogmcpFields, outputMode: OutputModeId): string {
+  const lines: string[] = [];
+  for (const f of YOGMCP_FIELDS) {
+    const val = fields[f.key].trim();
+    if (val) lines.push(`[${f.char} ${f.label.split(" ")[1]}] ${val}`);
+  }
+  if (lines.length === 0) return "";
+  const modeLabel = outputMode
+    ? `\n\n출력 모드: ${outputMode}(${OUTPUT_MODES.find((m) => m.id === outputMode)?.hint ?? ""})`
+    : "";
+  return lines.join("\n") + modeLabel;
+}
+
+// ── 메인 컴포넌트 ─────────────────────────────────────────────────────────────
 export function ChatPanel() {
   const messages = useChat((s) => s.messages);
   const provider = useChat((s) => s.provider);
@@ -46,6 +86,14 @@ export function ChatPanel() {
 
   const taRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+
+  // 요정분생설 출력 모드 — null 이면 기본(모드 없음)
+  const [outputMode, setOutputMode] = useState<OutputModeId>(null);
+  // 역관목조분 빌더 열림 여부
+  const [showBuilder, setShowBuilder] = useState(false);
+  const [yogmcpFields, setYogmcpFields] = useState<YogmcpFields>({
+    role: "", domain: "", purpose: "", conditions: "", volume: "",
+  });
 
   useEffect(() => {
     if (!expanded) return;
@@ -64,10 +112,13 @@ export function ChatPanel() {
 
   const onSend = async (text?: string) => {
     const ta = taRef.current;
-    const v = text ?? ta?.value ?? "";
-    if (!v.trim() || busy) return;
+    const raw = text ?? ta?.value ?? "";
+    if (!raw.trim() || busy) return;
     if (ta) ta.value = "";
-    await send(v);
+    // 요정분생설 모드 prefix 자동 주입
+    const modeObj = OUTPUT_MODES.find((m) => m.id === outputMode);
+    const prefix = modeObj ? `[출력 모드: ${modeObj.id}(${modeObj.hint})] ` : "";
+    await send(prefix + raw);
   };
 
   const onKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -75,6 +126,17 @@ export function ChatPanel() {
       e.preventDefault();
       onSend();
     }
+  };
+
+  // 역관목조분 빌더 → textarea에 채워넣기
+  const onBuildPrompt = () => {
+    const composed = composeYogmcpPrompt(yogmcpFields, outputMode);
+    if (!composed) return;
+    if (taRef.current) {
+      taRef.current.value = composed;
+      taRef.current.focus();
+    }
+    setShowBuilder(false);
   };
 
   return (
@@ -97,9 +159,7 @@ export function ChatPanel() {
           <div className="flex items-center gap-1">
             {messages.length > 0 && (
               <button
-                onClick={() => {
-                  if (confirm("대화를 모두 지울까요?")) clear();
-                }}
+                onClick={() => { if (confirm("대화를 모두 지울까요?")) clear(); }}
                 className="rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-rose-600 dark:hover:bg-neutral-800"
                 title="대화 초기화"
               >
@@ -123,12 +183,70 @@ export function ChatPanel() {
           </div>
         </div>
 
-        {/* Provider 드롭다운 (활성 표시 + 다른 옵션은 펼침) */}
+        {/* Provider 드롭다운 */}
         <div className="flex items-center justify-between gap-2 border-b border-neutral-200 px-3 py-2 text-xs dark:border-neutral-800">
           <span className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
             AI 모델
           </span>
           <ProviderSelector value={provider} onChange={setProvider} size="md" />
+        </div>
+
+        {/* ── 역관목조분 빌더 ──────────────────────────────────────────────── */}
+        <div className="border-b border-neutral-200 dark:border-neutral-800">
+          <button
+            onClick={() => setShowBuilder((v) => !v)}
+            className="flex w-full items-center justify-between px-3 py-2 text-xs font-semibold text-neutral-600 hover:bg-neutral-50 dark:text-neutral-400 dark:hover:bg-neutral-900"
+          >
+            <span className="flex items-center gap-1.5">
+              <LayoutTemplate size={12} className="text-brand" />
+              역관목조분 프롬프트 빌더
+              <span className="rounded bg-brand/10 px-1.5 py-0.5 text-[9px] font-bold text-brand">
+                役關目條分
+              </span>
+            </span>
+            {showBuilder ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          </button>
+
+          {showBuilder && (
+            <div className="border-t border-neutral-100 bg-neutral-50 px-3 pb-3 pt-2 dark:border-neutral-800 dark:bg-neutral-900/60">
+              <p className="mb-2 text-[10px] text-neutral-500">
+                5칸을 채우면 AI가 농협다운 문서를 만듭니다.
+              </p>
+              <div className="space-y-2">
+                {YOGMCP_FIELDS.map((f) => (
+                  <div key={f.key} className="flex items-start gap-2">
+                    <span className="mt-1.5 w-14 shrink-0 rounded bg-brand/10 px-1.5 py-0.5 text-center text-[10px] font-bold text-brand">
+                      {f.label}
+                    </span>
+                    <input
+                      type="text"
+                      value={yogmcpFields[f.key]}
+                      onChange={(e) =>
+                        setYogmcpFields((prev) => ({ ...prev, [f.key]: e.target.value }))
+                      }
+                      placeholder={f.placeholder}
+                      className="flex-1 rounded border border-neutral-200 bg-white px-2 py-1 text-xs placeholder-neutral-400 focus:border-brand focus:outline-none dark:border-neutral-700 dark:bg-neutral-950"
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  onClick={onBuildPrompt}
+                  className="flex-1 rounded bg-brand py-1.5 text-xs font-semibold text-white hover:bg-brand/90"
+                >
+                  프롬프트 생성 → 입력창에 채우기
+                </button>
+                <button
+                  onClick={() => setYogmcpFields({ role: "", domain: "", purpose: "", conditions: "", volume: "" })}
+                  className="rounded px-2 py-1.5 text-[10px] text-neutral-500 hover:bg-neutral-200 dark:hover:bg-neutral-800"
+                  title="초기화"
+                >
+                  초기화
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 메시지 리스트 */}
@@ -163,15 +281,47 @@ export function ChatPanel() {
           </div>
         )}
 
-        {/* 입력 */}
+        {/* ── 입력 영역 ────────────────────────────────────────────────────── */}
         <div className="border-t border-neutral-200 p-3 dark:border-neutral-800">
+          {/* 요정분생설 출력 모드 칩 */}
+          <div className="mb-2 flex flex-wrap gap-1">
+            <span className="self-center text-[10px] font-semibold text-neutral-400">출력 모드</span>
+            {OUTPUT_MODES.map((m) => (
+              <button
+                key={m.id}
+                onClick={() => setOutputMode(outputMode === m.id ? null : m.id)}
+                title={m.hint}
+                className={`rounded-full border px-2 py-0.5 text-[10px] font-bold transition-all ${
+                  outputMode === m.id
+                    ? m.color + " ring-1 ring-offset-1 ring-current"
+                    : "border-neutral-200 bg-white text-neutral-500 hover:border-neutral-400 dark:border-neutral-700 dark:bg-neutral-900"
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+            {outputMode && (
+              <button
+                onClick={() => setOutputMode(null)}
+                className="self-center text-[10px] text-neutral-400 hover:text-rose-500"
+                title="모드 해제"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
           <div className="flex items-end gap-2">
             <textarea
               ref={taRef}
               onKeyDown={onKey}
               rows={2}
               disabled={busy}
-              placeholder="메시지를 입력하세요. Ctrl+Enter 로 전송."
+              placeholder={
+                outputMode
+                  ? `[${outputMode} 모드] 메시지를 입력하세요. Ctrl+Enter 전송.`
+                  : "메시지를 입력하세요. Ctrl+Enter 로 전송."
+              }
               className="flex-1 resize-none rounded border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm focus:border-brand focus:outline-none disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900"
             />
             <button
@@ -192,12 +342,9 @@ export function ChatPanel() {
   );
 }
 
+// ── 메시지 버블 ───────────────────────────────────────────────────────────────
 function Bubble({
-  role,
-  content,
-  provider,
-  modelId,
-  latencyMs,
+  role, content, provider, modelId, latencyMs,
 }: {
   role: "system" | "user" | "assistant";
   content: string;
@@ -213,16 +360,12 @@ function Bubble({
       await navigator.clipboard.writeText(content);
       setCopied(true);
       setTimeout(() => setCopied(false), 1200);
-    } catch {
-      /* clipboard unavailable */
-    }
+    } catch { /* clipboard unavailable */ }
   };
 
   const handleAppend = () => appendToEditor(content);
   const handleReplace = () => {
-    if (
-      confirm("현재 에디터 본문 전체를 AI 답변으로 교체합니다. 진행할까요?")
-    )
+    if (confirm("현재 에디터 본문 전체를 AI 답변으로 교체합니다. 진행할까요?"))
       replaceEditor(content);
   };
 
@@ -290,6 +433,7 @@ function Bubble({
   );
 }
 
+// ── 빈 상태 ───────────────────────────────────────────────────────────────────
 function EmptyState({ onPick }: { onPick: (s: string) => void }) {
   const hasContext = useWorkspace((s) => s.source.length) > 50;
   const suggestions = hasContext ? SUGGESTIONS_WITH_CONTEXT : SUGGESTIONS_FRESH;

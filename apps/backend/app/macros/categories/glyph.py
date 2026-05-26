@@ -211,9 +211,118 @@ class G15_SpecialChar(Macro):
         return ir
 
 
+class G16_ToneConvert(Macro):
+    """세대별 톤 변환 — 역관목조분 '條 조건' 자동 적용.
+
+    60대: 정중하고 따뜻한 톤, 경어체 강화
+    40대: 친근하고 실용적인 톤, 간결한 문체
+    MZ: 짧고 발랄한 톤, 이모지 1~2개 허용
+
+    params:
+        target_age (str): "60대" | "40대" | "MZ"  (기본 "60대")
+
+    ai_powered=True — provider가 주입되면 LLM 호출,
+    없으면 규칙 기반 변환으로 폴백.
+    """
+
+    id = "G16"
+    category = MacroCategory.GLYPH
+    name = "세대별 톤 변환"
+    description = "선택 블록을 60대·40대·MZ 톤으로 변환 (役關目條分 條 조건 자동 적용)"
+    ai_powered = True
+    shortcut: dict[str, str] = {}
+
+    # ── 규칙 기반 폴백 사전 ───────────────────────────────────────────────────
+    _RULES_60 = [
+        ("해요", "합니다"),
+        ("하세요", "하시기 바랍니다"),
+        ("됩니다", "되오니 참고하시기 바랍니다"),
+        ("알려드려요", "말씀드립니다"),
+        ("확인해요", "확인하시기 바랍니다"),
+        ("신청해요", "신청해 주시기 바랍니다"),
+        ("감사해요", "감사드립니다"),
+    ]
+
+    _RULES_40 = [
+        ("하시기 바랍니다", "해보세요"),
+        ("되오니", "되니"),
+        ("말씀드립니다", "알려드립니다"),
+        ("드립니다", "드립니다"),  # 유지
+        ("주시기 바랍니다", "주세요"),
+    ]
+
+    _RULES_MZ = [
+        ("하시기 바랍니다", "해요"),
+        ("드립니다", "드려요"),
+        ("주시기 바랍니다", "주세요"),
+        ("감사드립니다", "감사해요 🙏"),
+        ("안내드립니다", "알려드려요 📢"),
+        ("확인하시기 바랍니다", "꼭 확인하세요 ✅"),
+        ("신청해 주시기 바랍니다", "신청하세요 👉"),
+        ("말씀드립니다", "알려드릴게요"),
+    ]
+
+    def apply(self, ir: DocumentIR, params: dict[str, Any] | None = None, **kwargs: Any) -> DocumentIR:
+        params = params or {}
+        target = str(params.get("target_age", "60대"))
+        provider = kwargs.get("_provider") or (
+            params.get("_provider") if isinstance(params, dict) else None
+        )
+
+        for blk in get_selected_blocks(ir, params):
+            for r in iter_runs(blk):
+                if not r.text.strip():
+                    continue
+                if provider:
+                    r.text = self._llm_convert(r.text, target, provider)
+                else:
+                    r.text = self._rule_convert(r.text, target)
+        return ir
+
+    def _rule_convert(self, text: str, target: str) -> str:
+        rules = {"60대": self._RULES_60, "40대": self._RULES_40, "MZ": self._RULES_MZ}.get(target, self._RULES_60)
+        for src, dst in rules:
+            text = text.replace(src, dst)
+        return text
+
+    def _llm_convert(self, text: str, target: str, provider: Any) -> str:
+        import asyncio
+        import concurrent.futures
+
+        tone_desc = {
+            "60대": "60대 조합원이 편하게 읽을 수 있도록 정중하고 따뜻한 경어체로",
+            "40대": "30~50대 직장인이 읽기 편하도록 친근하고 실용적인 어투로",
+            "MZ": "MZ세대가 좋아하는 짧고 발랄한 어투로. 적절한 이모지 1~2개 포함",
+        }.get(target, "")
+
+        from app.providers.llm.base import ChatMessage
+
+        prompt = (
+            f"다음 텍스트를 {tone_desc} 자연스럽게 다시 써줘. "
+            f"내용·사실은 절대 바꾸지 말고 톤과 어미만 변환해. "
+            f"출력은 변환된 텍스트만, 설명 없이.\n\n원문: {text}"
+        )
+
+        def _run() -> str:
+            return asyncio.run(
+                provider.complete(
+                    [ChatMessage(role="user", content=prompt)],
+                    temperature=0.5,
+                    max_tokens=512,
+                )
+            )
+
+        try:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+                return ex.submit(_run).result(timeout=15)
+        except Exception:
+            return self._rule_convert(text, target)
+
+
 MACROS = [
     G1_Bold, G2_Italic, G3_Underline, G4_Strikethrough,
     G5_Superscript, G6_Subscript, G7_FontSizeUp, G8_FontSizeDown,
     G9_FontSizeUnify, G10_HancomStandardSize, G11_FontFamily,
     G12_CopyFontFormat, G13_FontFormatPaintGlobal, G14_HanjaConvert, G15_SpecialChar,
+    G16_ToneConvert,
 ]

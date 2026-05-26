@@ -4,6 +4,7 @@ import { create } from "zustand";
 
 import { sendChat, type ChatMsg, type ChatProvider } from "@/lib/api";
 import { stripChatActions, stripMetaPhrases } from "@/lib/chatActions";
+import { getOrganizationId } from "@/lib/user";
 import { useWorkspace } from "@/store/workspace";
 
 export type ProviderChoice = ChatProvider | "auto";
@@ -84,6 +85,7 @@ export const useChat = create<ChatState>((set, get) => ({
         source_title: ws.title,
         preview_summary: previewSummary,
         selected_block_ids: ws.selectedBlockIds || [],
+        organization_id: getOrganizationId(),
       });
       set({
         messages: [
