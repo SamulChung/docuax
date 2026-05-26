@@ -358,13 +358,17 @@ export async function confirmPasswordReset(token: string, new_password: string) 
   });
 }
 
-export async function logout() {
+export async function logout(): Promise<void> {
   try {
-    await http<{ ok: boolean }>("/auth/logout", { method: "POST" });
+    await http<void>("/auth/logout", { method: "POST" });
   } catch {
     /* ignore */
   }
   setAuthToken(null);
+  // 쿠키가 지워졌으므로 랜딩으로 이동
+  if (typeof window !== "undefined") {
+    window.location.href = "/";
+  }
 }
 
 export async function getMe() {
