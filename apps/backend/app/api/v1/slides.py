@@ -12,7 +12,7 @@ import os
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -54,14 +54,16 @@ class GenerateRequest(BaseModel):
 
 
 class SaveRequest(BaseModel):
-    schema: dict[str, Any]
+    model_config = ConfigDict(populate_by_name=True)
+    schema_data: dict[str, Any] = Field(alias="schema")
     title: str = Field("슬라이드", max_length=500)
 
 
 class SlideResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     id: str
     title: str
-    schema: dict[str, Any]
+    schema_data: dict[str, Any] = Field(alias="schema", serialization_alias="schema")
 
 
 # ── 엔드포인트 ────────────────────────────────────────────────────
@@ -118,7 +120,7 @@ async def get_slide(
     slide = res.scalar_one_or_none()
     if not slide:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="슬라이드를 찾을 수 없습니다")
-    return SlideResponse(id=slide.id, title=slide.title, schema=slide.schema_json)
+    return SlideResponse(id=slide.id, title=slide.title, schema_data=slide.schema_json)
 
 
 @router.put("/slides/{slide_id}", response_model=SlideResponse)
@@ -134,16 +136,16 @@ async def save_slide(
 
     if existing:
         existing.title = body.title
-        existing.schema_json = body.schema
+        existing.schema_json = body.schema_data
         await db.commit()
-        return SlideResponse(id=existing.id, title=existing.title, schema=existing.schema_json)
+        return SlideResponse(id=existing.id, title=existing.title, schema_data=existing.schema_json)
 
     new_slide = Slide(
         id=slide_id,
         user_id=user.id if user else "anonymous",
         title=body.title,
-        schema_json=body.schema,
+        schema_json=body.schema_data,
     )
     db.add(new_slide)
     await db.commit()
-    return SlideResponse(id=new_slide.id, title=new_slide.title, schema=new_slide.schema_json)
+    return SlideResponse(id=new_slide.id, title=new_slide.title, schema_data=new_slide.schema_json)
