@@ -102,3 +102,48 @@ async def test_generate_returns_valid_schema_keys(mock_provider):
             assert "type" in el
             assert "left" in el
             assert "top" in el
+
+
+@pytest.mark.asyncio
+async def test_generate_returns_fallback_on_invalid_json(mocker):
+    """LLM이 invalid JSON을 반환하면 fallback 스키마를 반환해야 한다."""
+    provider = mocker.MagicMock()
+    provider.complete = mocker.AsyncMock(return_value="this is not json at all")
+    mocker.patch(
+        "app.services.slide_generator.get_llm_provider", return_value=provider
+    )
+    from app.services.slide_generator import generate_slides
+
+    result = await generate_slides(
+        mode="document",
+        document_text="테스트",
+        instruction="슬라이드",
+        theme="minimal",
+        custom_theme=None,
+        analysis_text=None,
+    )
+    assert "id" in result
+    assert "slides" in result
+    assert len(result["slides"]) >= 1
+
+
+@pytest.mark.asyncio
+async def test_generate_returns_fallback_on_provider_error(mocker):
+    """LLM 호출 실패 시 fallback 스키마를 반환해야 한다."""
+    provider = mocker.MagicMock()
+    provider.complete = mocker.AsyncMock(side_effect=Exception("provider unavailable"))
+    mocker.patch(
+        "app.services.slide_generator.get_llm_provider", return_value=provider
+    )
+    from app.services.slide_generator import generate_slides
+
+    result = await generate_slides(
+        mode="document",
+        document_text="테스트",
+        instruction="슬라이드",
+        theme="gov",
+        custom_theme=None,
+        analysis_text=None,
+    )
+    assert "id" in result
+    assert "slides" in result

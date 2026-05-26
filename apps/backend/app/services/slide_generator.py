@@ -74,6 +74,11 @@ async def generate_slides(
     """Claude를 호출해 SlideSchema JSON dict를 반환한다."""
     provider = get_llm_provider()
 
+    if mode == "document" and not document_text:
+        raise ValueError("document_text는 document 모드에서 필수입니다")
+    if mode == "analysis" and not analysis_text:
+        raise ValueError("analysis_text는 analysis 모드에서 필수입니다")
+
     if mode == "analysis":
         user_content = (
             f"{_ANALYSIS_MAPPING}\n\n"
@@ -92,16 +97,36 @@ async def generate_slides(
         ChatMessage(role="user", content=user_content),
     ]
 
-    raw = await provider.complete(messages, temperature=0.3, max_tokens=4096)
+    try:
+        raw = await provider.complete(messages, temperature=0.3, max_tokens=4096)  # Lower temperature → deterministic JSON structure
+    except Exception as e:
+        log.warning("슬라이드 생성 LLM 호출 실패, fallback 반환", error=str(e))
+        return _fallback_schema(theme)
 
     try:
         schema: dict[str, Any] = json.loads(raw)
     except json.JSONDecodeError:
         # JSON 파싱 실패 시 { ... } 블록 추출 시도
         import re
-        match = re.search(r"\{.*\}", raw, re.DOTALL)
+        # Find the outermost JSON object by locating the first '{' and matching brace
+        match = re.search(r"\{", raw)
         if match:
-            schema = json.loads(match.group())
+            start = match.start()
+            depth = 0
+            end = start
+            for i, ch in enumerate(raw[start:], start):
+                if ch == "{":
+                    depth += 1
+                elif ch == "}":
+                    depth -= 1
+                    if depth == 0:
+                        end = i + 1
+                        break
+            try:
+                schema = json.loads(raw[start:end])
+            except json.JSONDecodeError:
+                log.warning("슬라이드 JSON 추출 실패, fallback 반환", raw_snippet=raw[:100])
+                schema = _fallback_schema(theme)
         else:
             log.warning("슬라이드 JSON 파싱 실패, fallback 스키마 반환")
             schema = _fallback_schema(theme)
