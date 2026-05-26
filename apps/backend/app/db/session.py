@@ -32,6 +32,7 @@ async def init_db() -> None:
         MacroLog,
         MacroPreference,
         Organization,
+        Slide,
         User,
     )  # noqa: F401
 

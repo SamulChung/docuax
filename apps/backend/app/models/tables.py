@@ -171,3 +171,14 @@ class LearnedTemplate(Base):
     last_trained_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
     organization: Mapped[Organization] = relationship(back_populates="templates")
+
+
+class Slide(Base):
+    __tablename__ = "slides"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(String(32))
+    title: Mapped[str] = mapped_column(String(500), default="")
+    schema_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
