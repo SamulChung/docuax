@@ -1154,3 +1154,45 @@ export async function uploadTemplate(input: {
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
   return res.json();
 }
+
+// ── 슬라이드 API ──────────────────────────────────────────────
+
+export async function generateSlides(req: import("./slides/types").GenerateRequest): Promise<import("./slides/types").SlideSchema> {
+  const res = await fetch(`${BASE}/slides/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...ownerHeader() },
+    body: JSON.stringify(req),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function saveSlide(id: string, req: import("./slides/types").SaveSlideRequest): Promise<import("./slides/types").SlideSchema> {
+  const res = await fetch(`${BASE}/slides/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...ownerHeader() },
+    body: JSON.stringify(req),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return (await res.json()).schema;
+}
+
+export async function getSlide(id: string): Promise<import("./slides/types").SlideSchema> {
+  const res = await fetch(`${BASE}/slides/${id}`, {
+    headers: { ...ownerHeader() },
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return (await res.json()).schema;
+}
+
+export async function extractTheme(file: File): Promise<import("./slides/types").CustomTheme> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${BASE}/slides/extract-theme`, {
+    method: "POST",
+    headers: { ...ownerHeader() },
+    body: form,
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
