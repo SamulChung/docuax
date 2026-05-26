@@ -16,12 +16,14 @@ export default function LandingPage() {
         <LogoLockup size={28} />
         <div className="flex items-center gap-3">
           <button
+            type="button"
             onClick={() => setAuthMode("login")}
             className="rounded-md px-4 py-2 text-sm text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
           >
             로그인
           </button>
           <button
+            type="button"
             onClick={() => setAuthMode("register")}
             className="rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-soft"
           >
@@ -42,12 +44,14 @@ export default function LandingPage() {
         </p>
         <div className="flex gap-3">
           <button
+            type="button"
             onClick={() => setAuthMode("register")}
             className="rounded-lg bg-brand px-6 py-3 text-base font-semibold text-white shadow-sm hover:bg-brand-soft"
           >
             무료로 시작하기
           </button>
           <button
+            type="button"
             onClick={() => setAuthMode("login")}
             className="rounded-lg border border-neutral-200 px-6 py-3 text-base font-semibold text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
           >
@@ -107,10 +111,10 @@ export default function LandingPage() {
       <footer className="flex items-center justify-between border-t border-neutral-100 px-8 py-6 text-xs text-neutral-400 dark:border-neutral-800">
         <span>© 2026 DocuAX</span>
         <div className="flex gap-4">
-          <a href="/terms" className="hover:text-neutral-600 dark:hover:text-neutral-300">
+          <a href="/terms" className="hover:text-neutral-600 hover:underline dark:hover:text-neutral-300">
             이용약관
           </a>
-          <a href="/privacy" className="hover:text-neutral-600 dark:hover:text-neutral-300">
+          <a href="/privacy" className="hover:text-neutral-600 hover:underline dark:hover:text-neutral-300">
             개인정보처리방침
           </a>
         </div>
