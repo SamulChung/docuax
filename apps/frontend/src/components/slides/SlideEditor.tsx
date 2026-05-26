@@ -20,6 +20,15 @@ export default function SlideEditor({ schema, activeSlideIndex, onSlideChange }:
   const fabricRef = useRef<import("fabric").Canvas | null>(null);
   const [fabricLoaded, setFabricLoaded] = useState(false);
 
+  // Refs always hold the latest prop values — avoids stale closures in canvas event handlers
+  const activeSlideIndexRef = useRef(activeSlideIndex);
+  const onSlideChangeRef = useRef(onSlideChange);
+  // Flag that suppresses change events while canvas.clear() + re-render is running
+  const isRenderingRef = useRef(false);
+
+  useEffect(() => { activeSlideIndexRef.current = activeSlideIndex; }, [activeSlideIndex]);
+  useEffect(() => { onSlideChangeRef.current = onSlideChange; }, [onSlideChange]);
+
   // Fabric.js 동적 로드 (SSR safe)
   useEffect(() => {
     import("fabric").then((mod) => {
@@ -41,10 +50,21 @@ export default function SlideEditor({ schema, activeSlideIndex, onSlideChange }:
     fabricRef.current = canvas;
 
     const handleChange = () => {
-      const elements = (canvas.getObjects() as unknown[]).map((obj) =>
-        fabricObjectToSchemaElement(obj as Parameters<typeof fabricObjectToSchemaElement>[0])
-      );
-      onSlideChange(activeSlideIndex, elements);
+      // Suppress events fired during canvas.clear() + re-render cycle
+      if (isRenderingRef.current) return;
+      const elements = (canvas.getObjects() as unknown[]).map((obj) => {
+        const el = fabricObjectToSchemaElement(obj as Parameters<typeof fabricObjectToSchemaElement>[0]);
+        // Inverse scale: canvas coords (960×540) → schema coords (1280×720)
+        return {
+          ...el,
+          left: Math.round(el.left / DISPLAY_SCALE),
+          top: Math.round(el.top / DISPLAY_SCALE),
+          width: Math.round(el.width / DISPLAY_SCALE),
+          height: Math.round(el.height / DISPLAY_SCALE),
+          fontSize: el.fontSize != null ? Math.round(el.fontSize / DISPLAY_SCALE) : null,
+        };
+      });
+      onSlideChangeRef.current(activeSlideIndexRef.current, elements);
     };
 
     canvas.on("object:modified", handleChange);
@@ -66,8 +86,13 @@ export default function SlideEditor({ schema, activeSlideIndex, onSlideChange }:
 
     const { Textbox, Rect, Circle, Line, FabricImage } = fabricModule;
 
+    // Suppress spurious change events triggered by canvas.clear()
+    isRenderingRef.current = true;
     canvas.clear();
     canvas.backgroundColor = slide.background;
+
+    // Guard flag: prevent post-unmount / post-slide-switch async image callbacks
+    let cancelled = false;
 
     for (const el of slide.elements) {
       const opts = schemaElementToFabricOptions(el);
@@ -100,6 +125,7 @@ export default function SlideEditor({ schema, activeSlideIndex, onSlideChange }:
         case "image":
           if (el.src) {
             FabricImage.fromURL(el.src).then((img) => {
+              if (cancelled) return; // component unmounted or slide switched
               img.set(scaledOpts);
               canvas.add(img);
               canvas.renderAll();
@@ -109,6 +135,10 @@ export default function SlideEditor({ schema, activeSlideIndex, onSlideChange }:
       }
     }
     canvas.renderAll();
+    // Re-enable change event forwarding now that render is complete
+    isRenderingRef.current = false;
+
+    return () => { cancelled = true; };
   }, [schema, activeSlideIndex, fabricLoaded]);
 
   // 요소 추가 핸들러들 — SlideToolbar에서 window CustomEvent로 트리거

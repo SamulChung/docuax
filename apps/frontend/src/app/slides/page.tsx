@@ -60,7 +60,7 @@ export default function SlidesPage() {
       slides: [
         ...prev.slides,
         {
-          id: `slide-${prev.slides.length}`,
+          id: crypto.randomUUID(),
           background: "#ffffff",
           elements: [],
         },
