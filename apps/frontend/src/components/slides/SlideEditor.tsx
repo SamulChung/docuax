@@ -93,6 +93,16 @@ export default function SlideEditor({ schema, activeSlideIndex, onSlideChange }:
 
     // Guard flag: prevent post-unmount / post-slide-switch async image callbacks
     let cancelled = false;
+    // Track pending async image loads; release rendering lock only when all complete
+    let pendingImages = 0;
+
+    const releaseRenderLock = () => {
+      pendingImages--;
+      if (pendingImages <= 0) {
+        canvas.renderAll();
+        isRenderingRef.current = false;
+      }
+    };
 
     for (const el of slide.elements) {
       const opts = schemaElementToFabricOptions(el);
@@ -124,19 +134,23 @@ export default function SlideEditor({ schema, activeSlideIndex, onSlideChange }:
           break;
         case "image":
           if (el.src) {
+            pendingImages++;
             FabricImage.fromURL(el.src).then((img) => {
-              if (cancelled) return; // component unmounted or slide switched
+              if (cancelled) { pendingImages--; return; } // component unmounted or slide switched
               img.set(scaledOpts);
               canvas.add(img);
-              canvas.renderAll();
-            });
+              releaseRenderLock();
+            }).catch(() => { releaseRenderLock(); }); // don't block on broken URLs
           }
           break;
       }
     }
-    canvas.renderAll();
-    // Re-enable change event forwarding now that render is complete
-    isRenderingRef.current = false;
+
+    // If no async images, release lock immediately
+    if (pendingImages === 0) {
+      canvas.renderAll();
+      isRenderingRef.current = false;
+    }
 
     return () => { cancelled = true; };
   }, [schema, activeSlideIndex, fabricLoaded]);

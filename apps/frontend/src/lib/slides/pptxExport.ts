@@ -17,7 +17,14 @@ function toInchY(px: number): number {
 
 function hexToRgb(hex: string): string {
   // pptxgenjs expects 'RRGGBB' without #
-  return hex.replace("#", "").toUpperCase();
+  // Guard: LLM may return named colors or rgba strings — fall back to white
+  const cleaned = (hex ?? "").replace("#", "").toUpperCase();
+  return /^[0-9A-F]{6}$/.test(cleaned) ? cleaned : "FFFFFF";
+}
+
+/** Returns true only for URL schemes that pptxgenjs can fetch at export time */
+function isSupportedImageSrc(src: string): boolean {
+  return src.startsWith("http://") || src.startsWith("https://") || src.startsWith("data:");
 }
 
 function addElementToSlide(
@@ -92,7 +99,8 @@ function addElementToSlide(
       break;
 
     case "image":
-      if (el.src) {
+      // Only add images with URLs pptxgenjs can resolve at export time (no blob://)
+      if (el.src && isSupportedImageSrc(el.src)) {
         slide.addImage({ path: el.src, x, y, w, h });
       }
       break;
