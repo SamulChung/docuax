@@ -136,6 +136,15 @@ export function TopBar() {
           {/* 일일 사용량 — 로그인 사용자에게만 노출 */}
           <UsageBadge />
 
+          {/* 슬라이드 편집기 */}
+          <Link
+            href="/slides"
+            className="text-neutral-600 hover:text-brand"
+            title="슬라이드 편집기"
+          >
+            슬라이드
+          </Link>
+
           {/* 요금제 — 누구나 접근 */}
           <Link
             href="/pricing"
