@@ -204,7 +204,7 @@ export function AuthModal({ initialMode = "login", onClose, onSuccess }: Props) 
         </div>
 
         <div className="mt-3 text-center text-[10px] text-neutral-400">
-          ⓘ 비밀번호는 bcrypt로 해시되어 저장됩니다. 로그인 없이도 익명으로 사용 가능합니다.
+          ⓘ 비밀번호는 bcrypt로 안전하게 해시되어 저장됩니다.
         </div>
       </form>
     </div>
