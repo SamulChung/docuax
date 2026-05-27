@@ -35,6 +35,7 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     last_login: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    google_id: Mapped[str | None] = mapped_column(String(120), nullable=True, unique=True, index=True)
 
     organization: Mapped[Organization | None] = relationship(back_populates="users")
     documents: Mapped[list[Document]] = relationship(back_populates="user", cascade="all, delete-orphan")

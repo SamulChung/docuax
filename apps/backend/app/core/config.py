@@ -85,6 +85,11 @@ class Settings(BaseSettings):
     def email_enabled(self) -> bool:
         return bool(self.smtp_user and self.smtp_password)
 
+    # ── Google OAuth ──
+    google_client_id: str = ""      # 환경변수 GOOGLE_CLIENT_ID
+    google_client_secret: str = ""  # 환경변수 GOOGLE_CLIENT_SECRET
+    google_redirect_uri: str = "http://localhost:8000/api/v1/auth/google/callback"
+
     # ── Security ──
     cors_origins: str = "http://localhost:3000,https://docuax-qxyndyy63-specialdatastrategist-1934s-projects.vercel.app"
     jwt_algorithm: str = "HS256"

@@ -9,15 +9,17 @@
 from __future__ import annotations
 
 import re
+import secrets
 from datetime import datetime
 from typing import Annotated
+from urllib.parse import urlencode
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
-from pydantic import BaseModel, EmailStr, Field
+import httpx
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from fastapi import Request
+from starlette.responses import RedirectResponse
 
 from app.api.deps import get_current_user, get_current_user_optional, is_admin_user
 from app.core.config import get_settings
@@ -351,3 +353,132 @@ async def refresh_token(
         secure=get_settings().app_env == "production",
     )
     return {"access_token": new_access, "token_type": "bearer"}
+
+
+# ─── Google OAuth ────────────────────────────────────────────────────────────
+
+_GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+_GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+_GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
+
+# 단일 인스턴스용 state 저장 (멀티 인스턴스 환경에서는 Redis 사용 권장)
+_oauth_state_store: dict[str, bool] = {}
+
+
+@router.get("/auth/google")
+async def google_oauth_start() -> RedirectResponse:
+    """Google OAuth 시작 — Google 인증 URL로 redirect."""
+    settings = get_settings()
+    if not settings.google_client_id:
+        raise HTTPException(400, "Google OAuth가 설정되지 않았습니다. GOOGLE_CLIENT_ID 환경변수를 확인하세요.")
+    state = secrets.token_urlsafe(16)
+    _oauth_state_store[state] = True
+    params = {
+        "client_id": settings.google_client_id,
+        "redirect_uri": settings.google_redirect_uri,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "state": state,
+        "access_type": "offline",
+        "prompt": "select_account",
+    }
+    return RedirectResponse(f"{_GOOGLE_AUTH_URL}?{urlencode(params)}")
+
+
+@router.get("/auth/google/callback")
+async def google_oauth_callback(
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    db: AsyncSession = Depends(get_db),
+) -> RedirectResponse:
+    """Google OAuth callback — 사용자 계정 생성/연결 + 토큰 발급."""
+    settings = get_settings()
+    frontend = settings.frontend_url
+
+    if error:
+        return RedirectResponse(f"{frontend}/?error=oauth_cancelled")
+
+    # CSRF 검증
+    if not state or state not in _oauth_state_store:
+        return RedirectResponse(f"{frontend}/?error=oauth_state_mismatch")
+    del _oauth_state_store[state]
+
+    if not code:
+        return RedirectResponse(f"{frontend}/?error=oauth_no_code")
+
+    # code → access_token (Google)
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        token_res = await client.post(
+            _GOOGLE_TOKEN_URL,
+            data={
+                "code": code,
+                "client_id": settings.google_client_id,
+                "client_secret": settings.google_client_secret,
+                "redirect_uri": settings.google_redirect_uri,
+                "grant_type": "authorization_code",
+            },
+        )
+        if token_res.status_code != 200:
+            return RedirectResponse(f"{frontend}/?error=oauth_token_failed")
+        google_access_token = token_res.json().get("access_token")
+        if not google_access_token:
+            return RedirectResponse(f"{frontend}/?error=oauth_token_missing")
+
+        # Google access_token → userinfo
+        user_res = await client.get(
+            _GOOGLE_USERINFO_URL,
+            headers={"Authorization": f"Bearer {google_access_token}"},
+        )
+        if user_res.status_code != 200:
+            return RedirectResponse(f"{frontend}/?error=oauth_userinfo_failed")
+        userinfo = user_res.json()
+
+    google_id: str = userinfo.get("sub", "")
+    email: str = userinfo.get("email", "")
+    name: str = userinfo.get("name", "") or (email.split("@")[0] if email else "사용자")
+
+    if not google_id or not email:
+        return RedirectResponse(f"{frontend}/?error=oauth_missing_info")
+
+    # 기존 계정 조회 (google_id 우선, 이메일 차선)
+    res = await db.execute(select(User).where(User.google_id == google_id))
+    user = res.scalar_one_or_none()
+
+    if not user:
+        res2 = await db.execute(select(User).where(User.email == email))
+        user = res2.scalar_one_or_none()
+        if user:
+            # 기존 이메일 계정에 google_id 연결
+            user.google_id = google_id
+        else:
+            # 신규 계정 생성 (비밀번호 없음, email_verified=True)
+            user = User(
+                email=email,
+                name=name,
+                google_id=google_id,
+                email_verified=True,
+                plan="free",
+            )
+            db.add(user)
+
+    user.last_login = datetime.utcnow()
+    await db.flush()
+
+    # DocuAX 토큰 발급
+    access_token = create_access_token(user_id=user.id, plan=user.plan)
+    refresh_raw = await create_refresh_token(db, user.id)
+    await db.commit()
+    await db.refresh(user)
+
+    # 프론트엔드로 redirect (access_token은 URL 파라미터, refresh는 쿠키)
+    redirect = RedirectResponse(f"{frontend}/app?token={access_token}")
+    redirect.set_cookie(
+        key="docuax_refresh",
+        value=refresh_raw,
+        httponly=True,
+        samesite="lax",
+        max_age=60 * 60 * 24 * 30,
+        secure=get_settings().app_env == "production",
+    )
+    return redirect
