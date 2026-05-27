@@ -21,6 +21,7 @@ dependencies = [
     "python-jose[cryptography]>=3.3.0",
     "cryptography>=44.0.0",   # Fernet — 사용자 API 키 암호화 저장 (BYOK)
     "bcrypt>=4.2.0",          # 직접 사용 (passlib 5.x 비호환 회피)
+    "aiosmtplib>=3.0.0",       # Gmail SMTP (STARTTLS)
     "orjson>=3.10.0",
     "structlog>=24.4.0",
 

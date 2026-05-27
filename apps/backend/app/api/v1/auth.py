@@ -172,13 +172,10 @@ async def request_password_reset(
     if user:
         # 30분 만료 토큰 생성
         from app.services.auth import create_password_reset_token
+        from app.services.email import get_email_service
         token = create_password_reset_token(user.id)
-        # 운영에서는 메일 발송. 개발에서는 로그에만.
-        import logging
-        logging.getLogger(__name__).info(
-            "비밀번호 재설정 토큰 발급",
-            extra={"email": user.email, "token_prefix": token[:16] + "..."}
-        )
+        email_svc = get_email_service()
+        await email_svc.send_password_reset_email(user.email, token)
         await audit_log(
             db, action="auth.password_reset_request", user=user,
             request=request, status="ok",

@@ -73,6 +73,18 @@ class Settings(BaseSettings):
     s3_access_key: str = ""
     s3_secret_key: str = ""
 
+    # ── Email (SMTP) ──
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_user: str = ""          # Gmail 주소 (환경변수 SMTP_USER)
+    smtp_password: str = ""      # Gmail 앱 비밀번호 (환경변수 SMTP_PASSWORD)
+    smtp_from: str = ""          # 발신자 표시명+주소 (빈 값이면 smtp_user 사용)
+    frontend_url: str = "http://localhost:3000"
+
+    @property
+    def email_enabled(self) -> bool:
+        return bool(self.smtp_user and self.smtp_password)
+
     # ── Security ──
     cors_origins: str = "http://localhost:3000,https://docuax-qxyndyy63-specialdatastrategist-1934s-projects.vercel.app"
     jwt_algorithm: str = "HS256"
