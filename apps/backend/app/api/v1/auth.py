@@ -8,8 +8,10 @@
 """
 from __future__ import annotations
 
+import hmac
 import re
 import secrets
+import time
 from datetime import datetime
 from typing import Annotated
 from urllib.parse import urlencode
@@ -361,18 +363,44 @@ _GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 _GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 _GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 
-# 단일 인스턴스용 state 저장 (멀티 인스턴스 환경에서는 Redis 사용 권장)
-_oauth_state_store: dict[str, bool] = {}
+_OAUTH_STATE_TTL_S = 600  # 10 minutes
+
+
+def _create_oauth_state(secret: str) -> str:
+    """HMAC-signed state = nonce:timestamp:signature (no server storage needed)."""
+    nonce = secrets.token_urlsafe(12)
+    ts = str(int(time.time()))
+    key = secret.encode()
+    sig = hmac.new(key, f"{nonce}:{ts}".encode(), "sha256").hexdigest()
+    return f"{nonce}:{ts}:{sig}"
+
+
+def _verify_oauth_state(state: str, secret: str, max_age_s: int = _OAUTH_STATE_TTL_S) -> bool:
+    """Verify HMAC signature and TTL."""
+    try:
+        parts = state.split(":")
+        if len(parts) != 3:
+            return False
+        nonce, ts_str, sig = parts
+        ts = int(ts_str)
+        if abs(time.time() - ts) > max_age_s:
+            return False
+        key = secret.encode()
+        expected = hmac.new(key, f"{nonce}:{ts_str}".encode(), "sha256").hexdigest()
+        return hmac.compare_digest(sig, expected)
+    except Exception:
+        return False
 
 
 @router.get("/auth/google")
-async def google_oauth_start() -> RedirectResponse:
+async def google_oauth_start(
+    _rl: None = Depends(rate_limit_auth),
+) -> RedirectResponse:
     """Google OAuth 시작 — Google 인증 URL로 redirect."""
     settings = get_settings()
     if not settings.google_client_id:
         raise HTTPException(400, "Google OAuth가 설정되지 않았습니다. GOOGLE_CLIENT_ID 환경변수를 확인하세요.")
-    state = secrets.token_urlsafe(16)
-    _oauth_state_store[state] = True
+    state = _create_oauth_state(settings.app_secret_key)
     params = {
         "client_id": settings.google_client_id,
         "redirect_uri": settings.google_redirect_uri,
@@ -391,20 +419,23 @@ async def google_oauth_callback(
     state: str | None = None,
     error: str | None = None,
     db: AsyncSession = Depends(get_db),
+    _rl: None = Depends(rate_limit_auth),
 ) -> RedirectResponse:
     """Google OAuth callback — 사용자 계정 생성/연결 + 토큰 발급."""
     settings = get_settings()
     frontend = settings.frontend_url
 
     if error:
+        log.warning("Google OAuth cancelled by user", error=error)
         return RedirectResponse(f"{frontend}/app?error=oauth_cancelled")
 
     # CSRF 검증
-    if not state or state not in _oauth_state_store:
+    if not state or not _verify_oauth_state(state, settings.app_secret_key):
+        log.warning("Google OAuth state mismatch", state=state)
         return RedirectResponse(f"{frontend}/app?error=oauth_state_mismatch")
-    del _oauth_state_store[state]
 
     if not code:
+        log.warning("Google OAuth callback missing code")
         return RedirectResponse(f"{frontend}/app?error=oauth_no_code")
 
     # code → access_token (Google)
@@ -420,9 +451,11 @@ async def google_oauth_callback(
             },
         )
         if token_res.status_code != 200:
+            log.warning("Google OAuth token exchange failed", status=token_res.status_code)
             return RedirectResponse(f"{frontend}/app?error=oauth_token_failed")
         google_access_token = token_res.json().get("access_token")
         if not google_access_token:
+            log.warning("Google OAuth token response missing access_token")
             return RedirectResponse(f"{frontend}/app?error=oauth_token_missing")
 
         # Google access_token → userinfo
@@ -431,6 +464,7 @@ async def google_oauth_callback(
             headers={"Authorization": f"Bearer {google_access_token}"},
         )
         if user_res.status_code != 200:
+            log.warning("Google OAuth userinfo fetch failed", status=user_res.status_code)
             return RedirectResponse(f"{frontend}/app?error=oauth_userinfo_failed")
         userinfo = user_res.json()
 
@@ -471,14 +505,25 @@ async def google_oauth_callback(
     await db.commit()
     await db.refresh(user)
 
-    # 프론트엔드로 redirect (access_token은 URL 파라미터, refresh는 쿠키)
-    redirect = RedirectResponse(f"{frontend}/app?token={access_token}")
+    await audit_log(db, action="auth.google_login", user=user)
+
+    # 프론트엔드로 redirect — 토큰은 httpOnly 쿠키로 설정 (URL 노출 방지)
+    is_prod = get_settings().app_env == "production"
+    redirect = RedirectResponse(f"{frontend}/app", status_code=302)
+    redirect.set_cookie(
+        key="docuax_token",
+        value=access_token,
+        httponly=True,
+        samesite="lax",
+        max_age=60 * 15,
+        secure=is_prod,
+    )
     redirect.set_cookie(
         key="docuax_refresh",
         value=refresh_raw,
         httponly=True,
         samesite="lax",
         max_age=60 * 60 * 24 * 30,
-        secure=get_settings().app_env == "production",
+        secure=is_prod,
     )
     return redirect
