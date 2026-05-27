@@ -101,7 +101,15 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> list[str]:
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        origins = [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        # 프로덕션 Vercel URL은 Railway 환경변수와 무관하게 항상 허용
+        _always_allowed = [
+            "https://docuax-qxyndyy63-specialdatastrategist-1934s-projects.vercel.app",
+        ]
+        for url in _always_allowed:
+            if url not in origins:
+                origins.append(url)
+        return origins
 
     @property
     def admin_emails_list(self) -> list[str]:
