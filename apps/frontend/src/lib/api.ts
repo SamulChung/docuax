@@ -3,7 +3,10 @@
 import { sanitizeString } from "./sanitize";
 import { getOwnerId } from "./user";
 
-const BASE = "/api/v1";
+// NEXT_PUBLIC_API_BASE가 있으면 브라우저에서 Railway로 직접 요청 (Vercel SSRF 우회)
+// 로컬 개발 환경은 /api/v1 상대경로 → next.config.js 리라이트 사용
+const _apiBase = process.env.NEXT_PUBLIC_API_BASE ?? "";
+const BASE = _apiBase ? `${_apiBase}/api/v1` : "/api/v1";
 
 function ownerHeader(): Record<string, string> {
   try {

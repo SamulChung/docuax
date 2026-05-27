@@ -74,7 +74,7 @@ class Settings(BaseSettings):
     s3_secret_key: str = ""
 
     # ── Security ──
-    cors_origins: str = "http://localhost:3000"
+    cors_origins: str = "http://localhost:3000,https://docuax-qxyndyy63-specialdatastrategist-1934s-projects.vercel.app"
     jwt_algorithm: str = "HS256"
     jwt_expires_min: int = 1440
 
