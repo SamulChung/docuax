@@ -36,6 +36,7 @@ dependencies = [
     "beautifulsoup4>=4.12.0", # HTML 추출
     "markdownify>=0.13.0",    # HTML → Markdown
     "olefile>=0.47",          # HWP 레거시 바이너리 폴백
+    "python-pptx>=1.0.2",     # PPTX 테마 추출
 
     # 시각 요소 — 차트·수식 렌더링
     "matplotlib>=3.9.0",      # 차트(bar/line/pie/donut) + 수식(MathText) PNG 렌더

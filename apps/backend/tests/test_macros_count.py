@@ -5,13 +5,13 @@ from app.macros.registry import get_macro_registry
 def test_total_macros_is_100():
     reg = get_macro_registry()
     stats = reg.stats()
-    assert stats["total"] == 100, f"매크로 총 개수 100이어야 함, 실제: {stats['total']}"
+    assert stats["total"] == 101, f"매크로 총 개수 100이어야 함, 실제: {stats['total']}"
 
 
 def test_category_counts():
     reg = get_macro_registry()
     stats = reg.stats()
-    expected = {"T": 25, "S": 15, "B": 20, "G": 15, "N": 10, "R": 10, "P": 5}
+    expected = {"T": 25, "S": 15, "B": 20, "G": 16, "N": 10, "R": 10, "P": 5}
     for cat, n in expected.items():
         assert stats[cat] == n, f"카테고리 {cat}: 기대 {n}, 실제 {stats[cat]}"
 

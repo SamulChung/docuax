@@ -94,11 +94,11 @@ def test_macro_does_not_crash(macro_id: str):
 
 def test_macro_count_full_100():
     """매크로 100종 전체 검증 자체."""
-    assert len(get_macro_registry().all()) == 100
+    assert len(get_macro_registry().all()) == 101
 
 
 def test_macros_by_category_complete():
-    expected = {"T": 25, "S": 15, "B": 20, "G": 15, "N": 10, "R": 10, "P": 5}
+    expected = {"T": 25, "S": 15, "B": 20, "G": 16, "N": 10, "R": 10, "P": 5}
     reg = get_macro_registry()
     for cat_code, count in expected.items():
         cat = next(c for c in MacroCategory if c.value == cat_code)

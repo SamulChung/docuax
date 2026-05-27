@@ -111,5 +111,5 @@ async def test_macro_b12_cut_removes_block(client: AsyncClient):
 async def test_macros_total_endpoint(client: AsyncClient):
     r = await client.get("/api/v1/macros/stats")
     data = r.json()
-    assert data["total"] == 100
+    assert data["total"] == 101
     assert data["T"] == 25 and data["R"] == 10 and data["P"] == 5
