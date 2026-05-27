@@ -19,19 +19,28 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi import Request
 
-from app.api.deps import get_current_user, get_current_user_optional
+from app.api.deps import get_current_user, get_current_user_optional, is_admin_user
+from app.core.config import get_settings
+from app.core.logging import get_logger
 from app.core.rate_limit import rate_limit_auth
 from app.db import get_db
 from app.models import User
 from app.services.audit import audit_log
 from app.services.auth import (
     create_access_token,
+    create_password_reset_token,
     create_refresh_token,
+    create_verification_token,
+    decode_password_reset_token,
+    decode_verification_token,
     hash_password,
     revoke_all_user_refresh_tokens,
     verify_and_rotate_refresh_token,
     verify_password,
 )
+from app.services.email import get_email_service
+
+log = get_logger(__name__)
 
 router = APIRouter()
 
@@ -66,7 +75,6 @@ class MeResponse(BaseModel):
 
 
 def _user_public(u: User) -> dict:
-    from app.api.deps import is_admin_user
     return {
         "id": u.id,
         "email": u.email,
@@ -80,6 +88,12 @@ def _user_public(u: User) -> dict:
 
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+async def _get_user_by_id(db: AsyncSession, user_id: str) -> User | None:
+    """user_id로 User를 조회하는 공통 헬퍼."""
+    res = await db.execute(select(User).where(User.id == user_id))
+    return res.scalar_one_or_none()
 
 
 @router.post("/auth/register", response_model=AuthResponse)
@@ -126,13 +140,11 @@ async def register(
         secure=get_settings().app_env == "production",
     )
     # 이메일 인증 메일 발송 (실패해도 가입은 완료)
-    from app.services.auth import create_verification_token
-    from app.services.email import get_email_service
     verify_token = create_verification_token(user.id)
     try:
         await get_email_service().send_verification_email(user.email, verify_token)
     except Exception:
-        pass  # 메일 발송 실패는 가입 실패로 이어지지 않음
+        log.exception("verification email send failed", user_id=user.id)
     await audit_log(db, action="auth.register", user=user, request=request)
     return AuthResponse(access_token=token, user=_user_public(user))
 
@@ -225,8 +237,6 @@ async def request_password_reset(
     user = res.scalar_one_or_none()
     if user:
         # 30분 만료 토큰 생성
-        from app.services.auth import create_password_reset_token
-        from app.services.email import get_email_service
         token = create_password_reset_token(user.id)
         email_svc = get_email_service()
         await email_svc.send_password_reset_email(user.email, token)
@@ -246,12 +256,10 @@ async def confirm_password_reset(
     _rl: None = Depends(rate_limit_auth),
 ) -> dict:
     """재설정 토큰으로 비밀번호 변경."""
-    from app.services.auth import decode_password_reset_token
     user_id = decode_password_reset_token(body.token)
     if not user_id:
         raise HTTPException(status_code=400, detail="유효하지 않거나 만료된 재설정 링크입니다.")
-    res = await db.execute(select(User).where(User.id == user_id))
-    user = res.scalar_one_or_none()
+    user = await _get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="사용자 없음")
     user.password_hash = hash_password(body.new_password)
@@ -262,7 +270,6 @@ async def confirm_password_reset(
 
 @router.get("/auth/me", response_model=MeResponse)
 async def me(user: Annotated[User, Depends(get_current_user)]) -> MeResponse:
-    from app.api.deps import is_admin_user
     return MeResponse(
         id=user.id,
         email=user.email,
@@ -280,18 +287,20 @@ async def me(user: Annotated[User, Depends(get_current_user)]) -> MeResponse:
 async def verify_email(
     token: str,
     db: AsyncSession = Depends(get_db),
+    _rl: None = Depends(rate_limit_auth),
 ) -> dict:
     """이메일 인증 토큰 검증 → email_verified=True 업데이트."""
-    from app.services.auth import decode_verification_token
     user_id = decode_verification_token(token)
     if not user_id:
         raise HTTPException(status_code=400, detail="유효하지 않거나 만료된 인증 링크입니다.")
-    res = await db.execute(select(User).where(User.id == user_id))
-    user = res.scalar_one_or_none()
+    user = await _get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="사용자 없음")
+    if user.email_verified:
+        return {"ok": True, "message": "이메일 인증 완료"}
     user.email_verified = True
     await db.commit()
+    await audit_log(db, action="auth.verify_email", user=user)
     return {"ok": True, "message": "이메일 인증 완료"}
 
 
@@ -304,10 +313,9 @@ async def resend_verification(
     """인증 메일 재발송 (이미 인증된 계정이면 즉시 성공 반환)."""
     if user.email_verified:
         return {"ok": True, "message": "이미 인증된 계정입니다"}
-    from app.services.auth import create_verification_token
-    from app.services.email import get_email_service
     verify_token = create_verification_token(user.id)
     await get_email_service().send_verification_email(user.email, verify_token)
+    await audit_log(db, action="auth.resend_verification", user=user)
     return {"ok": True, "message": "인증 메일을 발송했습니다"}
 
 
@@ -326,8 +334,7 @@ async def refresh_token(
         response.delete_cookie("docuax_refresh")
         raise HTTPException(status_code=401, detail="refresh token 만료 또는 무효")
 
-    res = await db.execute(select(User).where(User.id == user_id))
-    user = res.scalar_one_or_none()
+    user = await _get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=401, detail="사용자 없음")
 

@@ -12,17 +12,19 @@ export function VerifyBanner({ emailVerified }: Props) {
   const [dismissed, setDismissed] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // 인증 완료이거나 아직 로드 안 됐으면 표시 안 함
   if (emailVerified === true || emailVerified === undefined || dismissed) return null;
 
   const handleResend = async () => {
     setSending(true);
+    setError(null);
     try {
       await resendVerification();
       setSent(true);
     } catch {
-      // 실패해도 UI 유지
+      setError("재발송 실패. 잠시 후 다시 시도해 주세요.");
     } finally {
       setSending(false);
     }
@@ -44,6 +46,7 @@ export function VerifyBanner({ emailVerified }: Props) {
         ) : (
           <span className="font-semibold">발송했습니다. 메일함을 확인해 주세요.</span>
         )}
+        {error && <span className="ml-2 text-red-600 dark:text-red-400">{error}</span>}
       </span>
       <button
         onClick={() => setDismissed(true)}

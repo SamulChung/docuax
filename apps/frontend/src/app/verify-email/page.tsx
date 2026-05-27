@@ -24,7 +24,14 @@ function VerifyEmailContent() {
     }
     fetch(`${BASE}/auth/verify-email?token=${encodeURIComponent(token)}`)
       .then(async (res) => {
-        const data = await res.json();
+        let data: { message?: string; detail?: string } = {};
+        try {
+          data = await res.json();
+        } catch {
+          setStatus("error");
+          setMessage(`인증 응답을 처리할 수 없습니다. (HTTP ${res.status})`);
+          return;
+        }
         if (res.ok) {
           setStatus("success");
           setMessage(data.message ?? "이메일 인증이 완료되었습니다.");
