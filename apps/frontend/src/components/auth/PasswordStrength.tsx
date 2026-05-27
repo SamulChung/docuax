@@ -16,16 +16,16 @@ const RULES: Rule[] = [
   { label: "특수문자", test: (p) => /[!@#$%^&*(),.?":{}|<>_\-+=/\\[\]~`']/.test(p) },
 ];
 
-const STRENGTH_TEXT = ["", "약함", "보통", "강함", "매우 강함"];
+const STRENGTH_TEXT = ["약함", "약함", "보통", "강함", "매우 강함"];
 const STRENGTH_BAR_COLOR = [
-  "",
+  "bg-red-500",
   "bg-red-500",
   "bg-orange-400",
   "bg-yellow-400",
   "bg-green-500",
 ];
 const STRENGTH_TEXT_COLOR = [
-  "",
+  "text-red-500",
   "text-red-500",
   "text-orange-500",
   "text-yellow-600",

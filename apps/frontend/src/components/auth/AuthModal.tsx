@@ -57,7 +57,7 @@ export function AuthModal({ initialMode = "login", onClose, onSuccess }: Props) 
   const canSubmit =
     !busy &&
     email.length > 0 &&
-    !emailError &&
+    EMAIL_RE.test(email) &&
     password.length >= (mode === "register" ? 8 : 1) &&
     (mode === "login" || (password === passwordConfirm && agreeTerms && agreePrivacy));
 
@@ -88,7 +88,7 @@ export function AuthModal({ initialMode = "login", onClose, onSuccess }: Props) 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-      onClick={onClose}
+      onClick={busy ? undefined : onClose}
     >
       <form
         onClick={(e) => e.stopPropagation()}
@@ -103,6 +103,7 @@ export function AuthModal({ initialMode = "login", onClose, onSuccess }: Props) 
           <button
             type="button"
             onClick={onClose}
+            aria-label="닫기"
             className="rounded p-1 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
           >
             <X size={16} />
@@ -141,8 +142,9 @@ export function AuthModal({ initialMode = "login", onClose, onSuccess }: Props) 
         <div className="space-y-3">
           {mode === "register" && (
             <div>
-              <label className="mb-1 block text-[11px] text-neutral-600 dark:text-neutral-400">이름 (선택)</label>
+              <label htmlFor="auth-name" className="mb-1 block text-[11px] text-neutral-600 dark:text-neutral-400">이름 (선택)</label>
               <input
+                id="auth-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="홍길동"
@@ -151,8 +153,9 @@ export function AuthModal({ initialMode = "login", onClose, onSuccess }: Props) 
             </div>
           )}
           <div>
-            <label className="mb-1 block text-[11px] text-neutral-600 dark:text-neutral-400">이메일</label>
+            <label htmlFor="auth-email" className="mb-1 block text-[11px] text-neutral-600 dark:text-neutral-400">이메일</label>
             <input
+              id="auth-email"
               type="email"
               value={email}
               required
@@ -171,10 +174,11 @@ export function AuthModal({ initialMode = "login", onClose, onSuccess }: Props) 
             )}
           </div>
           <div>
-            <label className="mb-1 block text-[11px] text-neutral-600 dark:text-neutral-400">
+            <label htmlFor="auth-password" className="mb-1 block text-[11px] text-neutral-600 dark:text-neutral-400">
               비밀번호 {mode === "register" && "(8자 이상)"}
             </label>
             <input
+              id="auth-password"
               type="password"
               value={password}
               required
@@ -187,8 +191,9 @@ export function AuthModal({ initialMode = "login", onClose, onSuccess }: Props) 
           </div>
           {mode === "register" && (
             <div>
-              <label className="mb-1 block text-[11px] text-neutral-600 dark:text-neutral-400">비밀번호 확인</label>
+              <label htmlFor="auth-password-confirm" className="mb-1 block text-[11px] text-neutral-600 dark:text-neutral-400">비밀번호 확인</label>
               <input
+                id="auth-password-confirm"
                 type="password"
                 value={passwordConfirm}
                 required
