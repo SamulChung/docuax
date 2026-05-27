@@ -211,6 +211,8 @@ async def logout(
         if user_id:
             await revoke_all_user_refresh_tokens(db, user_id)
             await db.commit()
+    if user:
+        await audit_log(db, action="auth.logout", user=user, request=request)
     response.delete_cookie("docuax_token")
     response.delete_cookie("docuax_refresh")
     return {"ok": True}
@@ -290,6 +292,7 @@ async def me(user: Annotated[User, Depends(get_current_user)]) -> MeResponse:
 @router.get("/auth/verify-email")
 async def verify_email(
     token: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     _rl: None = Depends(rate_limit_auth),
 ) -> dict:
@@ -304,13 +307,14 @@ async def verify_email(
         return {"ok": True, "message": "이메일 인증 완료"}
     user.email_verified = True
     await db.commit()
-    await audit_log(db, action="auth.verify_email", user=user)
+    await audit_log(db, action="auth.verify_email", user=user, request=request)
     return {"ok": True, "message": "이메일 인증 완료"}
 
 
 @router.post("/auth/resend-verification")
 async def resend_verification(
     user: Annotated[User, Depends(get_current_user)],
+    request: Request,
     db: AsyncSession = Depends(get_db),
     _rl: None = Depends(rate_limit_auth),
 ) -> dict:
@@ -319,15 +323,17 @@ async def resend_verification(
         return {"ok": True, "message": "이미 인증된 계정입니다"}
     verify_token = create_verification_token(user.id)
     await get_email_service().send_verification_email(user.email, verify_token)
-    await audit_log(db, action="auth.resend_verification", user=user)
+    await audit_log(db, action="auth.resend_verification", user=user, request=request)
     return {"ok": True, "message": "인증 메일을 발송했습니다"}
 
 
 @router.post("/auth/refresh")
 async def refresh_token(
     response: Response,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     docuax_refresh: str | None = Cookie(default=None),
+    _rl: None = Depends(rate_limit_auth),
 ) -> dict:
     """Refresh Token으로 새 Access Token + 새 Refresh Token 발급 (rotation)."""
     if not docuax_refresh:
@@ -345,6 +351,7 @@ async def refresh_token(
     new_access = create_access_token(user_id=user.id, plan=user.plan)
     new_refresh_raw = await create_refresh_token(db, user.id)
     await db.commit()
+    await audit_log(db, action="auth.refresh_token", user=user, request=request)
 
     response.set_cookie(
         key="docuax_refresh",
@@ -415,6 +422,7 @@ async def google_oauth_start(
 
 @router.get("/auth/google/callback")
 async def google_oauth_callback(
+    request: Request,
     code: str | None = None,
     state: str | None = None,
     error: str | None = None,
@@ -505,7 +513,7 @@ async def google_oauth_callback(
     await db.commit()
     await db.refresh(user)
 
-    await audit_log(db, action="auth.google_login", user=user)
+    await audit_log(db, action="auth.google_login", user=user, request=request)
 
     # 프론트엔드로 redirect — 토큰은 httpOnly 쿠키로 설정 (URL 노출 방지)
     is_prod = get_settings().app_env == "production"
