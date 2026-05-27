@@ -12,19 +12,26 @@ import re
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi import Request
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_current_user_optional
 from app.core.rate_limit import rate_limit_auth
 from app.db import get_db
 from app.models import User
 from app.services.audit import audit_log
-from app.services.auth import create_access_token, hash_password, verify_password
+from app.services.auth import (
+    create_access_token,
+    create_refresh_token,
+    hash_password,
+    revoke_all_user_refresh_tokens,
+    verify_and_rotate_refresh_token,
+    verify_password,
+)
 
 router = APIRouter()
 
@@ -98,12 +105,22 @@ async def register(
     await db.refresh(user)
 
     token = create_access_token(user_id=user.id, plan=user.plan)
+    refresh_raw = await create_refresh_token(db, user.id)
+    await db.commit()
     response.set_cookie(
         key="docuax_token",
         value=token,
         httponly=True,
         samesite="lax",
         max_age=60 * 60 * 24,
+    )
+    response.set_cookie(
+        key="docuax_refresh",
+        value=refresh_raw,
+        httponly=True,
+        samesite="lax",
+        max_age=60 * 60 * 24 * 30,
+        secure=False,
     )
     await audit_log(db, action="auth.register", user=user, request=request)
     return AuthResponse(access_token=token, user=_user_public(user))
@@ -126,6 +143,7 @@ async def login(
         raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 잘못되었습니다")
 
     user.last_login = datetime.utcnow()
+    refresh_raw = await create_refresh_token(db, user.id)
     await db.commit()
 
     token = create_access_token(user_id=user.id, plan=user.plan)
@@ -136,13 +154,30 @@ async def login(
         samesite="lax",
         max_age=60 * 60 * 24,
     )
+    response.set_cookie(
+        key="docuax_refresh",
+        value=refresh_raw,
+        httponly=True,
+        samesite="lax",
+        max_age=60 * 60 * 24 * 30,
+        secure=False,
+    )
     await audit_log(db, action="auth.login", user=user, request=request)
     return AuthResponse(access_token=token, user=_user_public(user))
 
 
 @router.post("/auth/logout")
-async def logout(response: Response) -> dict:
+async def logout(
+    response: Response,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: User | None = Depends(get_current_user_optional),
+) -> dict:
+    if user:
+        await revoke_all_user_refresh_tokens(db, user.id)
+        await db.commit()
     response.delete_cookie("docuax_token")
+    response.delete_cookie("docuax_refresh")
     return {"ok": True}
 
 
@@ -219,3 +254,38 @@ async def me(user: Annotated[User, Depends(get_current_user)]) -> MeResponse:
         created_at=user.created_at,
         is_admin=is_admin_user(user),
     )
+
+
+@router.post("/auth/refresh")
+async def refresh_token(
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+    docuax_refresh: str | None = Cookie(default=None),
+) -> dict:
+    """Refresh Token으로 새 Access Token + 새 Refresh Token 발급 (rotation)."""
+    if not docuax_refresh:
+        raise HTTPException(status_code=401, detail="refresh token 없음")
+
+    user_id = await verify_and_rotate_refresh_token(db, docuax_refresh)
+    if not user_id:
+        response.delete_cookie("docuax_refresh")
+        raise HTTPException(status_code=401, detail="refresh token 만료 또는 무효")
+
+    res = await db.execute(select(User).where(User.id == user_id))
+    user = res.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=401, detail="사용자 없음")
+
+    new_access = create_access_token(user_id=user.id, plan=user.plan)
+    new_refresh_raw = await create_refresh_token(db, user.id)
+    await db.commit()
+
+    response.set_cookie(
+        key="docuax_refresh",
+        value=new_refresh_raw,
+        httponly=True,
+        samesite="lax",
+        max_age=60 * 60 * 24 * 30,
+        secure=False,
+    )
+    return {"access_token": new_access, "token_type": "bearer"}

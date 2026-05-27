@@ -191,6 +191,26 @@ export interface HealthResponse {
   macros: Record<string, number>;
 }
 
+// ─── Refresh Token 인터셉터 ──────────────────────────────────────────────────
+
+let _isRefreshing = false;
+let _refreshQueue: Array<(token: string | null) => void> = [];
+
+async function _refreshAccessToken(): Promise<string | null> {
+  try {
+    const res = await fetch(`${BASE}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!res.ok) return null;
+    const data: { access_token: string } = await res.json();
+    setAuthToken(data.access_token);
+    return data.access_token;
+  } catch {
+    return null;
+  }
+}
+
 function getAuthToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("docuax.access_token");
@@ -221,19 +241,60 @@ async function http<T>(path: string, opts: RequestInit = {}): Promise<T> {
     headers["Authorization"] = `Bearer ${token}`;
   }
   // 깨진 유니코드(lone surrogate) 정제 — 서버 JSON 디코드 실패 방지
-  // body가 이미 JSON 문자열인 경우 한 번 더 정제 (사용자 입력에서 paste된 손상 문자 대비)
   let body = opts.body;
   if (typeof body === "string") {
     body = sanitizeString(body);
   }
-  const res = await fetch(`${BASE}${path}`, {
-    ...opts,
-    body,
-    credentials: "include",
-    headers,
-  });
+
+  const doFetch = (overrideToken?: string) => {
+    const h = overrideToken
+      ? { ...headers, Authorization: `Bearer ${overrideToken}` }
+      : headers;
+    return fetch(`${BASE}${path}`, { ...opts, body, credentials: "include", headers: h });
+  };
+
+  const res = await doFetch();
+
+  // 401 → refresh 시도 (로그인·refresh 엔드포인트 자체는 제외)
+  if (
+    res.status === 401 &&
+    !path.startsWith("/auth/login") &&
+    !path.startsWith("/auth/refresh")
+  ) {
+    if (_isRefreshing) {
+      // 이미 갱신 중 → 완료 후 재시도
+      return new Promise<T>((resolve, reject) => {
+        _refreshQueue.push((newToken) => {
+          if (!newToken) { reject(new Error("401: Unauthorized")); return; }
+          doFetch(newToken)
+            .then((r) =>
+              r.ok ? r.json() : r.text().then((t) => Promise.reject(new Error(`${r.status}: ${t}`)))
+            )
+            .then(resolve)
+            .catch(reject);
+        });
+      });
+    }
+
+    _isRefreshing = true;
+    const newToken = await _refreshAccessToken();
+    _isRefreshing = false;
+    _refreshQueue.forEach((cb) => cb(newToken));
+    _refreshQueue = [];
+
+    if (!newToken) {
+      setAuthToken(null);
+      if (typeof window !== "undefined") window.location.href = "/";
+      throw new Error("401: Unauthorized");
+    }
+
+    const retryRes = await doFetch(newToken);
+    if (!retryRes.ok) throw new Error(`${retryRes.status}: ${await retryRes.text()}`);
+    return retryRes.json() as T;
+  }
+
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
-  return res.json();
+  return res.json() as T;
 }
 
 export async function getHealth() {

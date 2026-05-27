@@ -88,7 +88,7 @@ class Settings(BaseSettings):
     # ── Security ──
     cors_origins: str = "http://localhost:3000,https://docuax-qxyndyy63-specialdatastrategist-1934s-projects.vercel.app"
     jwt_algorithm: str = "HS256"
-    jwt_expires_min: int = 1440
+    jwt_expires_min: int = 15  # Access Token 15분 (Refresh Token으로 자동 갱신)
 
     # ── On-prem 모드 ──
     on_premise: bool = False

@@ -1,6 +1,6 @@
 """SQLAlchemy 모델 — PRD 6.1 데이터 모델 그대로.
 
-엔티티: User, Organization, Document, ConversionRun, MacroLog, MacroPreference, LearnedTemplate, Slide
+엔티티: User, Organization, Document, ConversionRun, MacroLog, MacroPreference, LearnedTemplate, Slide, RefreshToken
 """
 from app.models.tables import (
     AuditLog,
@@ -10,6 +10,7 @@ from app.models.tables import (
     MacroLog,
     MacroPreference,
     Organization,
+    RefreshToken,
     Slide,
     User,
     UserApiKey,
@@ -23,6 +24,7 @@ __all__ = [
     "MacroLog",
     "MacroPreference",
     "Organization",
+    "RefreshToken",
     "Slide",
     "User",
     "UserApiKey",

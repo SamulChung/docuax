@@ -139,6 +139,20 @@ class AuditLog(Base):
     detail: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
 
+class RefreshToken(Base):
+    """Refresh Token — SHA-256 해시만 저장 (평문 없음). rotation 방식."""
+    __tablename__ = "refresh_tokens"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(
+        String(32), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)  # SHA-256 hex
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    revoked: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
 class UserApiKey(Base):
     """사용자가 본인 부담으로 등록한 외부 LLM API 키 (BYOK).
 
