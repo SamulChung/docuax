@@ -669,7 +669,9 @@ def _ir_to_html(ir: DocumentIR) -> str:
         except Exception as e:  # noqa: BLE001
             log.warning("PDF HTML 블록 실패", block=blk.id, error=str(e))
             continue
-    return f"<!DOCTYPE html><html><head><meta charset='utf-8'><style>{_PAGE_CSS}</style></head><body>{body}</body></html>"
+    korean_css = _get_korean_font_css()
+    extra_style = f"\n{korean_css}" if korean_css else ""
+    return f"<!DOCTYPE html><html><head><meta charset='utf-8'><style>{_PAGE_CSS}{extra_style}</style></head><body>{body}</body></html>"
 
 
 def render_ir_to_html(
@@ -780,8 +782,60 @@ _KOREAN_FONT_CANDIDATES = [
     ("NotoCJK", "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"),
 ]
 
+# 앱 내 폰트 캐시 디렉터리 (다운로드된 폰트 저장)
+_BUNDLED_FONT_DIR = Path(__file__).parent / "fonts"
+
+# 폰트 다운로드 후보 (이름, 파일명, URL 목록, Bold 여부)
+_FONT_DOWNLOADS: list[tuple[str, str, list[str], bool]] = [
+    (
+        "NanumGothic",
+        "NanumGothic-Regular.ttf",
+        [
+            "https://raw.githubusercontent.com/google/fonts/main/ofl/nanumgothic/NanumGothic-Regular.ttf",
+            "https://cdn.jsdelivr.net/gh/google/fonts/ofl/nanumgothic/NanumGothic-Regular.ttf",
+        ],
+        False,
+    ),
+    (
+        "NanumGothicBold",
+        "NanumGothic-Bold.ttf",
+        [
+            "https://raw.githubusercontent.com/google/fonts/main/ofl/nanumgothic/NanumGothic-Bold.ttf",
+            "https://cdn.jsdelivr.net/gh/google/fonts/ofl/nanumgothic/NanumGothic-Bold.ttf",
+        ],
+        True,
+    ),
+]
+
 _REGISTERED_FONT: str | None = None
 _REGISTERED_FONT_BOLD: str | None = None
+
+
+def _download_font_file(filename: str, urls: list[str]) -> Path | None:
+    """폰트 파일을 URL 목록에서 순서대로 시도하여 캐시 디렉터리에 저장."""
+    font_path = _BUNDLED_FONT_DIR / filename
+    if font_path.exists() and font_path.stat().st_size > 10_000:
+        return font_path
+    try:
+        import urllib.request
+
+        _BUNDLED_FONT_DIR.mkdir(parents=True, exist_ok=True)
+        tmp_path = font_path.with_suffix(".tmp")
+        for url in urls:
+            try:
+                log.info("한국어 폰트 다운로드 시도", filename=filename, url=url)
+                urllib.request.urlretrieve(url, tmp_path)
+                if tmp_path.exists() and tmp_path.stat().st_size > 10_000:
+                    tmp_path.replace(font_path)
+                    log.info("폰트 다운로드 완료", filename=filename, size=font_path.stat().st_size)
+                    return font_path
+            except Exception as e:  # noqa: BLE001
+                log.debug("폰트 URL 시도 실패", url=url, error=str(e))
+                if tmp_path.exists():
+                    tmp_path.unlink(missing_ok=True)
+    except Exception as e:  # noqa: BLE001
+        log.warning("폰트 다운로드 실패", filename=filename, error=str(e))
+    return None
 
 
 def _ensure_korean_font() -> tuple[str, str]:
@@ -795,6 +849,8 @@ def _ensure_korean_font() -> tuple[str, str]:
 
     regular: str | None = None
     bold: str | None = None
+
+    # 1단계: 시스템 폰트 탐색
     for name, path in _KOREAN_FONT_CANDIDATES:
         p = Path(path)
         if not p.exists():
@@ -809,9 +865,25 @@ def _ensure_korean_font() -> tuple[str, str]:
             log.debug("ReportLab 폰트 등록 실패", font=name, error=str(e))
             continue
 
+    # 2단계: 시스템 폰트 없으면 자동 다운로드 후 등록
     if not regular:
-        # 시스템 폰트 못 찾으면 기본 Helvetica (한글 깨짐)
-        log.warning("시스템 한국어 폰트 없음 — Helvetica 사용 (한글 깨질 수 있음)")
+        log.info("시스템 한국어 폰트 미발견 — 폰트 자동 다운로드 시도")
+        for font_name, filename, urls, is_bold in _FONT_DOWNLOADS:
+            font_path = _download_font_file(filename, urls)
+            if not font_path:
+                continue
+            try:
+                pdfmetrics.registerFont(TTFont(font_name, str(font_path)))
+                if not is_bold and not regular:
+                    regular = font_name
+                elif is_bold and not bold:
+                    bold = font_name
+            except Exception as e:  # noqa: BLE001
+                log.debug("다운로드 폰트 등록 실패", font=font_name, error=str(e))
+
+    if not regular:
+        # 다운로드까지 실패한 경우 — 한글 깨짐 경고
+        log.warning("한국어 폰트를 구할 수 없음 — Helvetica 사용 (한글 깨질 수 있음)")
         regular = "Helvetica"
         bold = "Helvetica-Bold"
     if not bold:
@@ -820,6 +892,36 @@ def _ensure_korean_font() -> tuple[str, str]:
     _REGISTERED_FONT = regular
     _REGISTERED_FONT_BOLD = bold
     return regular, bold
+
+
+def _get_korean_font_css() -> str:
+    """WeasyPrint용 한국어 폰트 @font-face CSS 선언 생성.
+
+    캐시된 폰트 파일이 없으면 다운로드를 시도하고, 실패 시 빈 문자열 반환.
+    """
+    css_parts: list[str] = []
+    for _font_name, filename, urls, is_bold in _FONT_DOWNLOADS:
+        font_path = _BUNDLED_FONT_DIR / filename
+        if not (font_path.exists() and font_path.stat().st_size > 10_000):
+            font_path_result = _download_font_file(filename, urls)
+            if not font_path_result:
+                continue
+            font_path = font_path_result
+        weight = "bold" if is_bold else "normal"
+        file_uri = font_path.as_uri()
+        css_parts.append(
+            f"@font-face {{"
+            f" font-family: 'NanumGothic';"
+            f" font-weight: {weight};"
+            f" src: url('{file_uri}') format('truetype');"
+            f" }}"
+        )
+    if css_parts:
+        css_parts.append(
+            "body { font-family: 'NanumGothic', '맑은 고딕', 'Malgun Gothic',"
+            " 'Noto Sans CJK KR', sans-serif !important; }"
+        )
+    return "\n".join(css_parts)
 
 
 def _try_reportlab(ir: DocumentIR, out: Path) -> bool:
