@@ -387,6 +387,7 @@ export interface AuthUser {
   persona_mode: string;
   organization_id: string | null;
   is_admin?: boolean;
+  email_verified?: boolean;
 }
 
 export interface AuthResponse {
@@ -438,6 +439,12 @@ export async function logout(): Promise<void> {
   if (typeof window !== "undefined") {
     window.location.href = "/";
   }
+}
+
+export async function resendVerification() {
+  return http<{ ok: boolean; message: string }>("/auth/resend-verification", {
+    method: "POST",
+  });
 }
 
 export async function getMe() {

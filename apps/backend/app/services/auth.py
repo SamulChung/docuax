@@ -64,6 +64,35 @@ def decode_token(token: str) -> dict[str, Any] | None:
         return None
 
 
+# ─── 이메일 인증 토큰 ─────────────────────────────────────────────────────────
+
+EMAIL_VERIFY_PURPOSE = "email_verify"
+
+
+def create_verification_token(user_id: str, ttl_hours: int = 24) -> str:
+    """이메일 인증용 단기 토큰. purpose='email_verify' 클레임으로 access_token과 분리."""
+    settings = get_settings()
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": user_id,
+        "purpose": EMAIL_VERIFY_PURPOSE,
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(hours=ttl_hours)).timestamp()),
+    }
+    return jwt.encode(payload, settings.app_secret_key, algorithm=settings.jwt_algorithm)
+
+
+def decode_verification_token(token: str) -> str | None:
+    """인증 토큰 검증 → user_id 또는 None.
+    purpose != 'email_verify' 면 거부 (access_token 재사용 방지)."""
+    payload = decode_token(token)
+    if not payload:
+        return None
+    if payload.get("purpose") != EMAIL_VERIFY_PURPOSE:
+        return None
+    return payload.get("sub")
+
+
 # ─── 비밀번호 재설정 — 단기(30분) 토큰 ──────────────────────────────────────
 
 PASSWORD_RESET_PURPOSE = "pwreset"

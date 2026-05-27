@@ -1,7 +1,14 @@
+import VerifyBannerWrapper from "@/components/auth/VerifyBannerWrapper";
+
 export default function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return (
+    <>
+      <VerifyBannerWrapper />
+      {children}
+    </>
+  );
 }

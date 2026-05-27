@@ -34,6 +34,7 @@ class User(Base):
     opt_in_marketing: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     last_login: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
 
     organization: Mapped[Organization | None] = relationship(back_populates="users")
     documents: Mapped[list[Document]] = relationship(back_populates="user", cascade="all, delete-orphan")

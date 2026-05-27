@@ -62,6 +62,7 @@ class MeResponse(BaseModel):
     organization_id: str | None
     created_at: datetime
     is_admin: bool = False
+    email_verified: bool = False
 
 
 def _user_public(u: User) -> dict:
@@ -74,6 +75,7 @@ def _user_public(u: User) -> dict:
         "persona_mode": u.persona_mode,
         "organization_id": u.organization_id,
         "is_admin": is_admin_user(u),
+        "email_verified": u.email_verified,
     }
 
 
@@ -123,6 +125,14 @@ async def register(
         max_age=60 * 60 * 24 * 30,
         secure=get_settings().app_env == "production",
     )
+    # 이메일 인증 메일 발송 (실패해도 가입은 완료)
+    from app.services.auth import create_verification_token
+    from app.services.email import get_email_service
+    verify_token = create_verification_token(user.id)
+    try:
+        await get_email_service().send_verification_email(user.email, verify_token)
+    except Exception:
+        pass  # 메일 발송 실패는 가입 실패로 이어지지 않음
     await audit_log(db, action="auth.register", user=user, request=request)
     return AuthResponse(access_token=token, user=_user_public(user))
 
@@ -262,7 +272,43 @@ async def me(user: Annotated[User, Depends(get_current_user)]) -> MeResponse:
         organization_id=user.organization_id,
         created_at=user.created_at,
         is_admin=is_admin_user(user),
+        email_verified=user.email_verified,
     )
+
+
+@router.get("/auth/verify-email")
+async def verify_email(
+    token: str,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """이메일 인증 토큰 검증 → email_verified=True 업데이트."""
+    from app.services.auth import decode_verification_token
+    user_id = decode_verification_token(token)
+    if not user_id:
+        raise HTTPException(status_code=400, detail="유효하지 않거나 만료된 인증 링크입니다.")
+    res = await db.execute(select(User).where(User.id == user_id))
+    user = res.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="사용자 없음")
+    user.email_verified = True
+    await db.commit()
+    return {"ok": True, "message": "이메일 인증 완료"}
+
+
+@router.post("/auth/resend-verification")
+async def resend_verification(
+    user: Annotated[User, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+    _rl: None = Depends(rate_limit_auth),
+) -> dict:
+    """인증 메일 재발송 (이미 인증된 계정이면 즉시 성공 반환)."""
+    if user.email_verified:
+        return {"ok": True, "message": "이미 인증된 계정입니다"}
+    from app.services.auth import create_verification_token
+    from app.services.email import get_email_service
+    verify_token = create_verification_token(user.id)
+    await get_email_service().send_verification_email(user.email, verify_token)
+    return {"ok": True, "message": "인증 메일을 발송했습니다"}
 
 
 @router.post("/auth/refresh")
