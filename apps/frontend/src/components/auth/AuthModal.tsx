@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Loader2, LogIn, UserPlus, X } from "lucide-react";
 
 import { login, register } from "@/lib/api";
+import { PasswordStrength } from "./PasswordStrength";
 
 type Mode = "login" | "register";
 
@@ -13,10 +14,14 @@ interface Props {
   onSuccess?: () => void;
 }
 
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
 export function AuthModal({ initialMode = "login", onClose, onSuccess }: Props) {
   const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [name, setName] = useState("");
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
@@ -29,12 +34,36 @@ export function AuthModal({ initialMode = "login", onClose, onSuccess }: Props) 
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  // 모드 전환 시 에러 초기화
+  const switchMode = (m: Mode) => {
+    setMode(m);
+    setError(null);
+    setEmailError(null);
+    setPassword("");
+    setPasswordConfirm("");
+  };
+
+  const handleEmailBlur = () => {
+    if (email && !EMAIL_RE.test(email)) {
+      setEmailError("올바른 이메일 형식이 아닙니다");
+    } else {
+      setEmailError(null);
+    }
+  };
+
+  const passwordMismatch =
+    mode === "register" && passwordConfirm.length > 0 && password !== passwordConfirm;
+
+  const canSubmit =
+    !busy &&
+    email.length > 0 &&
+    !emailError &&
+    password.length >= (mode === "register" ? 8 : 1) &&
+    (mode === "login" || (password === passwordConfirm && agreeTerms && agreePrivacy));
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (mode === "register" && (!agreeTerms || !agreePrivacy)) {
-      setError("이용약관과 개인정보처리방침에 모두 동의해야 가입할 수 있습니다.");
-      return;
-    }
+    if (!canSubmit) return;
     setBusy(true);
     setError(null);
     try {
@@ -66,6 +95,7 @@ export function AuthModal({ initialMode = "login", onClose, onSuccess }: Props) 
         onSubmit={handleSubmit}
         className="w-[400px] rounded-xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
       >
+        {/* 헤더 */}
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-bold">
             {mode === "register" ? "회원가입" : "로그인"}
@@ -107,6 +137,7 @@ export function AuthModal({ initialMode = "login", onClose, onSuccess }: Props) 
           </div>
         </div>
 
+        {/* 폼 필드 */}
         <div className="space-y-3">
           {mode === "register" && (
             <div>
@@ -126,10 +157,18 @@ export function AuthModal({ initialMode = "login", onClose, onSuccess }: Props) 
               value={email}
               required
               autoComplete="email"
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); setEmailError(null); }}
+              onBlur={handleEmailBlur}
               placeholder="you@company.com"
-              className="w-full rounded border border-neutral-200 bg-white px-2 py-1.5 text-sm focus:border-brand focus:outline-none dark:border-neutral-700 dark:bg-neutral-950"
+              className={`w-full rounded border px-2 py-1.5 text-sm focus:outline-none dark:bg-neutral-950 ${
+                emailError
+                  ? "border-red-400 focus:border-red-500"
+                  : "border-neutral-200 focus:border-brand dark:border-neutral-700"
+              }`}
             />
+            {emailError && (
+              <p className="mt-0.5 text-[10px] text-red-500">{emailError}</p>
+            )}
           </div>
           <div>
             <label className="mb-1 block text-[11px] text-neutral-600 dark:text-neutral-400">
@@ -144,9 +183,31 @@ export function AuthModal({ initialMode = "login", onClose, onSuccess }: Props) 
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded border border-neutral-200 bg-white px-2 py-1.5 text-sm focus:border-brand focus:outline-none dark:border-neutral-700 dark:bg-neutral-950"
             />
+            {mode === "register" && <PasswordStrength password={password} />}
           </div>
+          {mode === "register" && (
+            <div>
+              <label className="mb-1 block text-[11px] text-neutral-600 dark:text-neutral-400">비밀번호 확인</label>
+              <input
+                type="password"
+                value={passwordConfirm}
+                required
+                autoComplete="new-password"
+                onChange={(e) => setPasswordConfirm(e.target.value)}
+                className={`w-full rounded border px-2 py-1.5 text-sm focus:outline-none dark:bg-neutral-950 ${
+                  passwordMismatch
+                    ? "border-red-400 focus:border-red-500"
+                    : "border-neutral-200 focus:border-brand dark:border-neutral-700"
+                }`}
+              />
+              {passwordMismatch && (
+                <p className="mt-0.5 text-[10px] text-red-500">비밀번호가 일치하지 않습니다</p>
+              )}
+            </div>
+          )}
         </div>
 
+        {/* 약관 동의 */}
         {mode === "register" && (
           <div className="mt-3 space-y-1.5 rounded border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs dark:border-neutral-700 dark:bg-neutral-900">
             <label className="flex items-start gap-2">
@@ -180,32 +241,35 @@ export function AuthModal({ initialMode = "login", onClose, onSuccess }: Props) 
           </div>
         )}
 
+        {/* 에러 */}
         {error && (
           <div className="mt-3 rounded bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:bg-rose-950 dark:text-rose-300">
             {error}
           </div>
         )}
 
+        {/* 제출 버튼 */}
         <button
           type="submit"
-          disabled={busy || !email || !password || (mode === "register" && (!agreeTerms || !agreePrivacy))}
+          disabled={!canSubmit}
           className="mt-4 flex w-full items-center justify-center gap-2 rounded-md bg-brand py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-soft disabled:opacity-50"
         >
           {busy && <Loader2 size={14} className="animate-spin" />}
           {mode === "register" ? (
-            <><UserPlus size={14} /> 가입하기</>
+            <><UserPlus size={14} /> {busy ? "가입 중…" : "가입하기"}</>
           ) : (
-            <><LogIn size={14} /> 로그인</>
+            <><LogIn size={14} /> {busy ? "로그인 중…" : "로그인"}</>
           )}
         </button>
 
+        {/* 모드 전환 링크 */}
         <div className="mt-3 text-center text-xs text-neutral-500">
           {mode === "register" ? (
             <>
               이미 계정이 있으신가요?{" "}
               <button
                 type="button"
-                onClick={() => { setMode("login"); setError(null); }}
+                onClick={() => switchMode("login")}
                 className="text-brand hover:underline"
               >
                 로그인
@@ -222,7 +286,7 @@ export function AuthModal({ initialMode = "login", onClose, onSuccess }: Props) 
               계정이 없으신가요?{" "}
               <button
                 type="button"
-                onClick={() => { setMode("register"); setError(null); }}
+                onClick={() => switchMode("register")}
                 className="text-brand hover:underline"
               >
                 회원가입
