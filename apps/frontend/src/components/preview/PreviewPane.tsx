@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Check, ClipboardCopy, Loader2 } from "lucide-react";
+
+import { copyPreviewToClipboard } from "@/lib/clipboard";
 
 import {
   editBlock,
@@ -1099,6 +1101,25 @@ export function PreviewPane() {
   const [editingCell, setEditingCell] = useState<{ blockId: string; row: number; col: number } | null>(null);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
 
+  // 클립보드 복사 — 전체 또는 선택 블록
+  const [copyState, setCopyState] = useState<"idle" | "copying" | "copied" | "error">("idle");
+  const [copyError, setCopyError] = useState("");
+  const handleCopy = async (mode: "all" | "selected") => {
+    if (!preview?.document_id) return;
+    setCopyState("copying");
+    setCopyError("");
+    try {
+      const blockIds = mode === "selected" ? selectedBlockIds : undefined;
+      await copyPreviewToClipboard(preview.document_id, { blockIds });
+      setCopyState("copied");
+      setTimeout(() => setCopyState("idle"), 1800);
+    } catch (e) {
+      setCopyState("error");
+      setCopyError(e instanceof Error ? e.message : String(e));
+      setTimeout(() => setCopyState("idle"), 3000);
+    }
+  };
+
   const stats = useMemo(() => {
     if (!preview) return null;
     return preview.review_counts;
@@ -1173,6 +1194,15 @@ export function PreviewPane() {
                 ✨ AI에 묻기
               </button>
               <button
+                onClick={() => handleCopy("selected")}
+                disabled={copyState === "copying"}
+                className="flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded bg-brand px-2 py-0.5 text-[10px] font-semibold text-white hover:bg-brand/90 disabled:opacity-50"
+                title="선택 블록을 클립보드에 복사 — Word·한컴·구글독스에 서식 유지 붙여넣기"
+              >
+                {copyState === "copied" ? <Check size={9} /> : <ClipboardCopy size={9} />}
+                {copyState === "copied" ? "복사됨" : "선택 복사"}
+              </button>
+              <button
                 onClick={clearSelection}
                 className="shrink-0 whitespace-nowrap text-[10px] text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100"
               >
@@ -1187,7 +1217,41 @@ export function PreviewPane() {
             </div>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-3 whitespace-nowrap text-[11px]">
+        <div className="flex shrink-0 items-center gap-2 whitespace-nowrap text-[11px]">
+          {/* 📋 전체 복사 — Word·한컴 등에 서식 유지 붙여넣기 */}
+          {preview && (
+            <button
+              onClick={() => handleCopy("all")}
+              disabled={copyState === "copying"}
+              className={`flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded border px-2 py-0.5 text-[10px] font-semibold transition-all ${
+                copyState === "copied"
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                  : copyState === "error"
+                  ? "border-rose-300 bg-rose-50 text-rose-700"
+                  : "border-neutral-200 bg-white text-neutral-600 hover:border-brand hover:text-brand dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400"
+              } disabled:opacity-60`}
+              title={
+                copyState === "error"
+                  ? `복사 실패: ${copyError}`
+                  : "변환 결과 전체를 클립보드에 복사 — Word·한컴·구글독스 등에 Ctrl+V 시 표·헤딩·글머리 서식 유지"
+              }
+            >
+              {copyState === "copying" ? (
+                <Loader2 size={9} className="animate-spin" />
+              ) : copyState === "copied" ? (
+                <Check size={9} />
+              ) : (
+                <ClipboardCopy size={9} />
+              )}
+              {copyState === "copying"
+                ? "복사 중…"
+                : copyState === "copied"
+                ? "복사됨"
+                : copyState === "error"
+                ? "실패"
+                : "📋 복사"}
+            </button>
+          )}
           {stats && (
             <>
               <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-review-red" title="수정 필요">

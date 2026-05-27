@@ -672,6 +672,52 @@ def _ir_to_html(ir: DocumentIR) -> str:
     return f"<!DOCTYPE html><html><head><meta charset='utf-8'><style>{_PAGE_CSS}</style></head><body>{body}</body></html>"
 
 
+def render_ir_to_html(
+    ir: DocumentIR,
+    *,
+    selected_block_ids: list[str] | None = None,
+) -> str:
+    """클립보드 복사용 HTML 생성 — Word/한컴 등에 붙여넣으면 서식 유지.
+
+    Args:
+        ir: 변환된 DocumentIR
+        selected_block_ids: 지정 시 해당 ID 블록만 HTML 로. 없으면 전체.
+
+    Returns:
+        완전한 HTML 문서 (CSS 인라인 포함).
+    """
+    body = ""
+
+    # 전체 모드 — 표지·제목·모든 블록
+    if not selected_block_ids:
+        if ir.cover:
+            body += _cover_to_html(ir.cover)
+        if ir.title and (not ir.cover or not ir.cover.title):
+            body += f"<h1 style='text-align:center'>{html.escape(ir.title)}</h1>"
+        for blk in ir.blocks:
+            try:
+                body += _block_to_html(blk)
+            except Exception as e:  # noqa: BLE001
+                log.warning("HTML 블록 실패", block=blk.id, error=str(e))
+                continue
+    # 선택 모드 — 지정된 블록만 (선택 순서 유지)
+    else:
+        id_set = set(selected_block_ids)
+        for blk in ir.blocks:
+            if blk.id not in id_set:
+                continue
+            try:
+                body += _block_to_html(blk)
+            except Exception as e:  # noqa: BLE001
+                log.warning("HTML 블록 실패", block=blk.id, error=str(e))
+                continue
+
+    return (
+        f"<!DOCTYPE html><html><head><meta charset='utf-8'>"
+        f"<style>{_PAGE_CSS}</style></head><body>{body}</body></html>"
+    )
+
+
 def _try_weasyprint(html_str: str, out: Path) -> bool:
     try:
         from weasyprint import HTML
