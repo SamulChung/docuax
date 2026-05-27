@@ -160,7 +160,7 @@ async def verify_and_rotate_refresh_token(
         return None
 
     rt.revoked = True
-    await db.flush()
+    await db.commit()
     return rt.user_id
 
 

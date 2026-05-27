@@ -112,7 +112,8 @@ async def register(
         value=token,
         httponly=True,
         samesite="lax",
-        max_age=60 * 60 * 24,
+        max_age=60 * 15,
+        secure=get_settings().app_env == "production",
     )
     response.set_cookie(
         key="docuax_refresh",
@@ -120,7 +121,7 @@ async def register(
         httponly=True,
         samesite="lax",
         max_age=60 * 60 * 24 * 30,
-        secure=False,
+        secure=get_settings().app_env == "production",
     )
     await audit_log(db, action="auth.register", user=user, request=request)
     return AuthResponse(access_token=token, user=_user_public(user))
@@ -152,7 +153,8 @@ async def login(
         value=token,
         httponly=True,
         samesite="lax",
-        max_age=60 * 60 * 24,
+        max_age=60 * 15,
+        secure=get_settings().app_env == "production",
     )
     response.set_cookie(
         key="docuax_refresh",
@@ -160,7 +162,7 @@ async def login(
         httponly=True,
         samesite="lax",
         max_age=60 * 60 * 24 * 30,
-        secure=False,
+        secure=get_settings().app_env == "production",
     )
     await audit_log(db, action="auth.login", user=user, request=request)
     return AuthResponse(access_token=token, user=_user_public(user))
@@ -172,10 +174,17 @@ async def logout(
     request: Request,
     db: AsyncSession = Depends(get_db),
     user: User | None = Depends(get_current_user_optional),
+    docuax_refresh: str | None = Cookie(default=None),
 ) -> dict:
     if user:
         await revoke_all_user_refresh_tokens(db, user.id)
         await db.commit()
+    elif docuax_refresh:
+        # Access token이 만료됐지만 refresh token이 있으면 — 해시로 직접 revoke
+        user_id = await verify_and_rotate_refresh_token(db, docuax_refresh)
+        if user_id:
+            await revoke_all_user_refresh_tokens(db, user_id)
+            await db.commit()
     response.delete_cookie("docuax_token")
     response.delete_cookie("docuax_refresh")
     return {"ok": True}
@@ -286,6 +295,6 @@ async def refresh_token(
         httponly=True,
         samesite="lax",
         max_age=60 * 60 * 24 * 30,
-        secure=False,
+        secure=get_settings().app_env == "production",
     )
     return {"access_token": new_access, "token_type": "bearer"}

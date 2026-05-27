@@ -204,7 +204,11 @@ async function _refreshAccessToken(): Promise<string | null> {
     });
     if (!res.ok) return null;
     const data: { access_token: string } = await res.json();
-    setAuthToken(data.access_token);
+    // localStorage만 업데이트 (document.cookie는 건드리지 않음 — httpOnly 쿠키 보호)
+    if (typeof window !== "undefined") {
+      localStorage.setItem("docuax.access_token", data.access_token);
+    }
+    window.dispatchEvent(new CustomEvent("docuax:auth-changed"));
     return data.access_token;
   } catch {
     return null;
@@ -259,6 +263,7 @@ async function http<T>(path: string, opts: RequestInit = {}): Promise<T> {
   if (
     res.status === 401 &&
     !path.startsWith("/auth/login") &&
+    !path.startsWith("/auth/register") &&
     !path.startsWith("/auth/refresh")
   ) {
     if (_isRefreshing) {
