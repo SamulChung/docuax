@@ -397,15 +397,15 @@ async def google_oauth_callback(
     frontend = settings.frontend_url
 
     if error:
-        return RedirectResponse(f"{frontend}/?error=oauth_cancelled")
+        return RedirectResponse(f"{frontend}/app?error=oauth_cancelled")
 
     # CSRF 검증
     if not state or state not in _oauth_state_store:
-        return RedirectResponse(f"{frontend}/?error=oauth_state_mismatch")
+        return RedirectResponse(f"{frontend}/app?error=oauth_state_mismatch")
     del _oauth_state_store[state]
 
     if not code:
-        return RedirectResponse(f"{frontend}/?error=oauth_no_code")
+        return RedirectResponse(f"{frontend}/app?error=oauth_no_code")
 
     # code → access_token (Google)
     async with httpx.AsyncClient(timeout=10.0) as client:
@@ -420,10 +420,10 @@ async def google_oauth_callback(
             },
         )
         if token_res.status_code != 200:
-            return RedirectResponse(f"{frontend}/?error=oauth_token_failed")
+            return RedirectResponse(f"{frontend}/app?error=oauth_token_failed")
         google_access_token = token_res.json().get("access_token")
         if not google_access_token:
-            return RedirectResponse(f"{frontend}/?error=oauth_token_missing")
+            return RedirectResponse(f"{frontend}/app?error=oauth_token_missing")
 
         # Google access_token → userinfo
         user_res = await client.get(
@@ -431,7 +431,7 @@ async def google_oauth_callback(
             headers={"Authorization": f"Bearer {google_access_token}"},
         )
         if user_res.status_code != 200:
-            return RedirectResponse(f"{frontend}/?error=oauth_userinfo_failed")
+            return RedirectResponse(f"{frontend}/app?error=oauth_userinfo_failed")
         userinfo = user_res.json()
 
     google_id: str = userinfo.get("sub", "")
@@ -439,7 +439,7 @@ async def google_oauth_callback(
     name: str = userinfo.get("name", "") or (email.split("@")[0] if email else "사용자")
 
     if not google_id or not email:
-        return RedirectResponse(f"{frontend}/?error=oauth_missing_info")
+        return RedirectResponse(f"{frontend}/app?error=oauth_missing_info")
 
     # 기존 계정 조회 (google_id 우선, 이메일 차선)
     res = await db.execute(select(User).where(User.google_id == google_id))
