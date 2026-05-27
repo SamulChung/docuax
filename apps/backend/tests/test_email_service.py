@@ -72,8 +72,9 @@ async def test_send_calls_aiosmtplib_in_prod(email_svc_enabled):
 
 @pytest.mark.asyncio
 async def test_send_smtp_error_is_logged_not_raised(email_svc_enabled):
-    """SMTP 오류는 예외를 올리지 않고 로그만 남긴다."""
-    with patch("app.services.email.aiosmtplib") as mock_smtp:
+    """SMTP 오류는 예외를 올리지 않고 log.error를 호출한다."""
+    with patch("app.services.email.aiosmtplib") as mock_smtp, \
+         patch("app.services.email.log") as mock_log:
         mock_smtp.send = AsyncMock(side_effect=Exception("connection refused"))
-        # 예외 없이 완료되어야 함
         await email_svc_enabled.send_verification_email("user@example.com", "tok000")
+        mock_log.error.assert_called_once()

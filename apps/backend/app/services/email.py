@@ -8,7 +8,9 @@ from __future__ import annotations
 import logging
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from functools import lru_cache
 from pathlib import Path
+from urllib.parse import urlencode
 
 import aiosmtplib
 from jinja2 import Environment, FileSystemLoader
@@ -30,13 +32,13 @@ class EmailService:
 
     async def send_verification_email(self, user_email: str, token: str) -> None:
         s = self._settings
-        link = f"{s.frontend_url}/verify-email?token={token}"
+        link = f"{s.frontend_url}/verify-email?{urlencode({'token': token})}"
         html = self._env.get_template("verify.html").render(link=link)
         await self._send(user_email, "[DocuAX] 이메일 인증을 완료해 주세요", html)
 
     async def send_password_reset_email(self, user_email: str, token: str) -> None:
         s = self._settings
-        link = f"{s.frontend_url}/reset-password?token={token}"
+        link = f"{s.frontend_url}/reset-password?{urlencode({'token': token})}"
         html = self._env.get_template("reset_password.html").render(link=link)
         await self._send(user_email, "[DocuAX] 비밀번호 재설정 안내", html)
 
@@ -68,5 +70,6 @@ class EmailService:
             log.error("이메일 발송 실패 (무시하고 계속)", extra={"to": to, "error": str(exc)})
 
 
+@lru_cache(maxsize=1)
 def get_email_service() -> EmailService:
     return EmailService()
