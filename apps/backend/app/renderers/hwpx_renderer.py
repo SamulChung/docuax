@@ -34,6 +34,21 @@ def _runs_text(runs: list[InlineRun]) -> str:
     return "".join(r.text for r in runs)
 
 
+def _runs_text_with_links(runs: list[InlineRun]) -> str:
+    """링크 URL을 (url) 형태로 포함하는 텍스트.
+
+    동일 링크가 여러 번 나와도 한 번만 표시한다.
+    """
+    parts: list[str] = []
+    seen_links: set[str] = set()
+    for r in runs:
+        parts.append(r.text)
+        if r.link and r.link not in seen_links and r.link != r.text:
+            parts.append(f" ({r.link})")
+            seen_links.add(r.link)
+    return "".join(parts)
+
+
 def _list_prefix(li: ListItem) -> str:
     if li.ordered:
         return f"{li.index}{li.order_format.replace('1.', '.')} "
@@ -159,6 +174,161 @@ def _try_python_hwpx(ir: DocumentIR, out: Path, profile: OrganizationProfile | N
                 return None
 
         header_bg_id = _make_header_border_fill()
+
+        # ── 범용 char style 생성 (색상·밑줄·취소선·폰트크기 지원) ──────────
+        _char_pr_cache: dict[tuple, str | None] = {}
+
+        def _make_char_pr(
+            bold: bool = False, italic: bool = False,
+            underline: bool = False, strikethrough: bool = False,
+            color: str | None = None, height: int | None = None,
+        ) -> str | None:
+            """주어진 속성 조합에 맞는 charPr ID를 생성하거나 재사용.
+
+            bool 속성은 True일 때만 XML 서브 요소를 추가하고,
+            color(#RRGGBB) / height(pt × 100) 는 속성(attribute)으로 설정.
+            """
+            key = (bold, italic, underline, strikethrough, color, height)
+            if key in _char_pr_cache:
+                return _char_pr_cache[key]
+
+            # 단순 케이스 — 이미 확보된 ID 재사용
+            if bold and italic and not underline and not strikethrough and not color and not height:
+                _char_pr_cache[key] = bold_italic_id
+                return bold_italic_id
+            if bold and not italic and not underline and not strikethrough and not color and not height:
+                _char_pr_cache[key] = bold_id
+                return bold_id
+            if italic and not bold and not underline and not strikethrough and not color and not height:
+                _char_pr_cache[key] = italic_id
+                return italic_id
+            if not any([bold, italic, underline, strikethrough, color, height]):
+                _char_pr_cache[key] = None
+                return None
+
+            # 새 charPr 생성
+            try:
+                from lxml import etree  # type: ignore[import-not-found]
+                hdr = doc.headers[0]
+
+                def modifier(el: "etree._Element") -> None:  # type: ignore[name-defined]
+                    if height is not None:
+                        el.set("height", str(height))
+                    if color is not None:
+                        el.set("textColor", color.lstrip("#"))
+                    if bold and el.find(f"{HH_NS}bold") is None:
+                        etree.SubElement(el, f"{HH_NS}bold")
+                    if italic and el.find(f"{HH_NS}italic") is None:
+                        etree.SubElement(el, f"{HH_NS}italic")
+                    if underline and el.find(f"{HH_NS}underline") is None:
+                        ul = etree.SubElement(el, f"{HH_NS}underline")
+                        ul.set("type", "SINGLE")
+                    if strikethrough and el.find(f"{HH_NS}strikeOut") is None:
+                        st = etree.SubElement(el, f"{HH_NS}strikeOut")
+                        st.set("type", "SINGLE")
+
+                def predicate(el: "etree._Element") -> bool:  # type: ignore[name-defined]
+                    h_ok = height is None or el.get("height") == str(height)
+                    c_ok = (color is None
+                            or el.get("textColor", "").upper() == color.lstrip("#").upper())
+                    b_ok = (el.find(f"{HH_NS}bold") is not None) == bold
+                    i_ok = (el.find(f"{HH_NS}italic") is not None) == italic
+                    u_ok = (el.find(f"{HH_NS}underline") is not None) == underline
+                    s_ok = (el.find(f"{HH_NS}strikeOut") is not None) == strikethrough
+                    return h_ok and c_ok and b_ok and i_ok and u_ok and s_ok
+
+                el_new = hdr.ensure_char_property(
+                    base_char_pr_id="0", modifier=modifier, predicate=predicate
+                )
+                cid = el_new.get("id")
+            except Exception as exc:
+                log.debug("_make_char_pr 생성 실패, 폴백", error=str(exc))
+                # 최선의 폴백
+                cid = (bold_italic_id if (bold and italic) else
+                       bold_id if bold else
+                       italic_id if italic else None)
+
+            _char_pr_cache[key] = cid
+            return cid
+
+        def _char_id_for_runs(runs: list[InlineRun]) -> str | None:
+            """runs 집합의 지배적 인라인 스타일에 맞는 charPr ID 반환.
+
+            python-hwpx 가 단락 단위 스타일만 지원하므로
+            여러 스타일이 혼재하면 "우세한 속성"을 사용한다.
+            """
+            if not runs:
+                return None
+            has_bold = any(r.bold for r in runs)
+            has_italic = any(r.italic for r in runs)
+            has_underline = any(r.underline for r in runs)
+            has_strike = any(r.strikethrough for r in runs)
+            color = next((r.color for r in runs if r.color), None)
+            fs_pt = next((r.font_size for r in runs if r.font_size), None)
+            height = int(fs_pt * 100) if fs_pt else None
+            return _make_char_pr(
+                bold=has_bold, italic=has_italic,
+                underline=has_underline, strikethrough=has_strike,
+                color=color, height=height,
+            )
+
+        # ── 코드 블록 소형 char style (9pt, 기본 본문 charPr 기반) ──────────
+        def _make_code_char_pr() -> str | None:
+            """코드용 9pt char style. 폰트 설정은 환경 의존이므로 크기만 지정."""
+            return _make_char_pr(height=900)  # 9pt × 100
+
+        code_char_id = _make_code_char_pr()
+
+        # ── 셀 배경색 borderFill ID 생성 / 재사용 ─────────────────────────
+        _cell_bg_cache: dict[str, str | None] = {}
+
+        def _get_cell_bg_id(color: str) -> str | None:
+            """임의 색상의 배경 borderFill을 헤더에 등록하고 ID를 반환."""
+            color_key = color.lstrip("#").upper()
+            if color_key in _cell_bg_cache:
+                return _cell_bg_cache[color_key]
+            try:
+                from lxml import etree  # type: ignore[import-not-found]
+                hdr = doc.headers[0]
+                bfs = hdr.element.find(".//{%s}borderFills" % HH_NS[1:-1])
+                if bfs is None:
+                    _cell_bg_cache[color_key] = None
+                    return None
+                # 이미 같은 색상의 borderFill이 있으면 재사용
+                for bf in bfs.findall(f"{HH_NS}borderFill"):
+                    fb = bf.find(f"{HH_NS}fillBrush/{HH_NS}winBrush")
+                    if fb is not None and fb.get("faceColor", "").lstrip("#").upper() == color_key:
+                        bid = bf.get("id")
+                        _cell_bg_cache[color_key] = bid
+                        return bid
+                # 신규 생성
+                ids = [int(bf.get("id", "0")) for bf in bfs.findall(f"{HH_NS}borderFill")]
+                new_id = str((max(ids) if ids else 1) + 1)
+                bf_new = etree.SubElement(bfs, f"{HH_NS}borderFill")
+                bf_new.set("id", new_id)
+                bf_new.set("threeD", "0")
+                bf_new.set("shadow", "0")
+                bf_new.set("centerLine", "NONE")
+                bf_new.set("breakCellSeparateLine", "0")
+                etree.SubElement(bf_new, f"{HH_NS}slash", type="NONE", Crooked="0", isCounter="0")
+                etree.SubElement(bf_new, f"{HH_NS}backSlash", type="NONE", Crooked="0", isCounter="0")
+                for edge in ("leftBorder", "rightBorder", "topBorder", "bottomBorder"):
+                    etree.SubElement(bf_new, f"{HH_NS}{edge}",
+                                     type="SOLID", width="0.12mm", color="#AAAAAA")
+                etree.SubElement(bf_new, f"{HH_NS}diagonal",
+                                 type="SLASH", width="0.12mm", color="#AAAAAA")
+                fb_el = etree.SubElement(bf_new, f"{HH_NS}fillBrush")
+                etree.SubElement(fb_el, f"{HH_NS}winBrush",
+                                 faceColor=f"#{color_key}", hatchColor="#000000",
+                                 hatchStyle="NONE", alpha="0")
+                if bfs.get("itemCnt") is not None:
+                    bfs.set("itemCnt", str(len(bfs)))
+                _cell_bg_cache[color_key] = new_id
+                return new_id
+            except Exception as exc:
+                log.debug("_get_cell_bg_id 실패", color=color, error=str(exc))
+                _cell_bg_cache[color_key] = None
+                return None
 
         # 헤딩 레벨 → styleIDRef 매핑 (한컴 기본 "개요 1~6")
         HEADING_STYLE_IDS = {1: "1", 2: "2", 3: "3", 4: "4", 5: "5", 6: "6"}
@@ -621,16 +791,45 @@ def _try_python_hwpx(ir: DocumentIR, out: Path, profile: OrganizationProfile | N
                     cid = heading_char_ids.get(lvl, bold_id)
                     add_styled(_runs_text(blk.runs), bold=True, style_id=sid, char_id=cid)
                 elif blk.type == BlockType.LIST_ITEM and blk.list_item:
-                    indent = "  " * blk.list_item.depth  # depth당 2 spaces (이전 4)
-                    has_bold = any(r.bold for r in blk.list_item.runs)
-                    add_styled(
-                        indent + _list_prefix(blk.list_item) + _runs_text(blk.list_item.runs),
-                        bold=has_bold,
-                    )
+                    indent = "  " * blk.list_item.depth  # depth당 2 spaces
+                    li_text = _runs_text_with_links(blk.list_item.runs)
+                    cid = _char_id_for_runs(blk.list_item.runs)
+                    # cid 가 None 이면 add_styled 의 bold 인자 사용
+                    if cid:
+                        kw_li: dict = {"char_pr_id_ref": cid}
+                        try:
+                            doc.add_paragraph(
+                                indent + _list_prefix(blk.list_item) + li_text,
+                                **kw_li,
+                            )
+                        except TypeError:
+                            doc.add_paragraph(indent + _list_prefix(blk.list_item) + li_text)
+                    else:
+                        has_bold = any(r.bold for r in blk.list_item.runs)
+                        add_styled(
+                            indent + _list_prefix(blk.list_item) + li_text,
+                            bold=has_bold,
+                        )
                 elif blk.type == BlockType.QUOTE:
-                    add_styled("    " + _runs_text(blk.runs), italic=True)
+                    cid_q = _char_id_for_runs(blk.runs) or italic_id
+                    text_q = "    " + _runs_text_with_links(blk.runs)
+                    if cid_q:
+                        try:
+                            doc.add_paragraph(text_q, char_pr_id_ref=cid_q)
+                        except TypeError:
+                            doc.add_paragraph(text_q)
+                    else:
+                        add_styled(text_q, italic=True)
                 elif blk.type == BlockType.CODE:
-                    doc.add_paragraph("    " + _runs_text(blk.runs))
+                    # 코드 블록: 소형 char style + 들여쓰기
+                    code_text = "    " + _runs_text(blk.runs)
+                    if code_char_id:
+                        try:
+                            doc.add_paragraph(code_text, char_pr_id_ref=code_char_id)
+                        except TypeError:
+                            doc.add_paragraph(code_text)
+                    else:
+                        doc.add_paragraph(code_text)
                 elif blk.type == BlockType.TABLE and blk.table and blk.table.rows:
                     rows = len(blk.table.rows)
                     cols = max(len(r) for r in blk.table.rows)
@@ -641,10 +840,32 @@ def _try_python_hwpx(ir: DocumentIR, out: Path, profile: OrganizationProfile | N
                         # 안전하게 15cm로 잡아 셀 너비 균등 배분.
                         page_width = 42500  # ~15cm
                         table = doc.add_table(rows=rows, cols=cols, width=page_width)
+
+                        # ── 1단계: colspan/rowspan 셀 병합 ───────────────────
+                        if hasattr(table, "merge_cells"):
+                            for ri, row in enumerate(blk.table.rows):
+                                for ci, cell_data in enumerate(row):
+                                    if ci >= cols:
+                                        break
+                                    # colspan>1 또는 rowspan>1 인 셀이 병합 시작 셀
+                                    if cell_data.colspan > 1 or cell_data.rowspan > 1:
+                                        end_row = min(ri + cell_data.rowspan - 1, rows - 1)
+                                        end_col = min(ci + cell_data.colspan - 1, cols - 1)
+                                        if end_row > ri or end_col > ci:
+                                            try:
+                                                table.merge_cells(ri, ci, end_row, end_col)
+                                            except Exception as me:
+                                                log.debug(
+                                                    "셀 병합 실패",
+                                                    ri=ri, ci=ci, error=str(me),
+                                                )
+
+                        # ── 2단계: 셀 내용 채우기 ───────────────────────────
                         for ri, row in enumerate(blk.table.rows):
                             for ci, cell_data in enumerate(row):
                                 if ci >= cols:
                                     break
+                                # colspan==0 or rowspan==0 → 병합에 의해 커버된 셀, 스킵
                                 if cell_data.colspan == 0 or cell_data.rowspan == 0:
                                     continue
                                 text = _runs_text(cell_data.runs)
@@ -656,12 +877,23 @@ def _try_python_hwpx(ir: DocumentIR, out: Path, profile: OrganizationProfile | N
                                     tcell = table.cell(ri, ci)
                                     is_header = (ri == 0 and blk.table.header_row)
                                     cell_bold = is_header or any(r.bold for r in cell_data.runs)
-                                    # 헤더 행 셀에 회색 배경 borderFill 적용
-                                    if is_header and header_bg_id and hasattr(tcell, "element"):
-                                        try:
-                                            tcell.element.set("borderFillIDRef", header_bg_id)
-                                        except Exception:
-                                            pass
+
+                                    if hasattr(tcell, "element"):
+                                        # 헤더 행: 회색 배경
+                                        if is_header and header_bg_id:
+                                            try:
+                                                tcell.element.set("borderFillIDRef", header_bg_id)
+                                            except Exception:
+                                                pass
+                                        # 비헤더 셀: IR 명시 배경색
+                                        elif cell_data.background:
+                                            bg_id = _get_cell_bg_id(cell_data.background)
+                                            if bg_id:
+                                                try:
+                                                    tcell.element.set("borderFillIDRef", bg_id)
+                                                except Exception:
+                                                    pass
+
                                     add_cell_text(tcell, text, bold=cell_bold)
                                 except Exception:
                                     continue
@@ -705,9 +937,17 @@ def _try_python_hwpx(ir: DocumentIR, out: Path, profile: OrganizationProfile | N
                     else:
                         add_styled(blk.equation.latex, italic=True)
                 else:
-                    has_bold = any(r.bold for r in blk.runs)
-                    has_italic = any(r.italic for r in blk.runs)
-                    add_styled(_runs_text(blk.runs), bold=has_bold, italic=has_italic)
+                    # 일반 단락: 링크 URL 포함, 인라인 스타일(색상·밑줄·크기 등) 반영
+                    para_text = _runs_text_with_links(blk.runs)
+                    cid_para = _char_id_for_runs(blk.runs)
+                    if cid_para:
+                        try:
+                            doc.add_paragraph(para_text, char_pr_id_ref=cid_para)
+                        except TypeError:
+                            # 라이브러리가 해당 kwarg 미지원 — 단순 추가
+                            doc.add_paragraph(para_text)
+                    else:
+                        doc.add_paragraph(para_text)
             except Exception as e:  # noqa: BLE001
                 log.warning("HWPX 블록 변환 실패, 스킵", block_id=blk.id, error=str(e))
                 continue
