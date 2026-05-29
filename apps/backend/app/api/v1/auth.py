@@ -241,17 +241,26 @@ async def request_password_reset(
     """
     res = await db.execute(select(User).where(User.email == body.email))
     user = res.scalar_one_or_none()
+    reset_token: str | None = None
     if user:
         # 30분 만료 토큰 생성
-        token = create_password_reset_token(user.id)
+        reset_token = create_password_reset_token(user.id)
         email_svc = get_email_service()
-        await email_svc.send_password_reset_email(user.email, token)
+        await email_svc.send_password_reset_email(user.email, reset_token)
         await audit_log(
             db, action="auth.password_reset_request", user=user,
             request=request, status="ok",
         )
     # 보안: 항상 동일 응답
-    return {"ok": True, "message": "재설정 안내를 이메일로 발송했습니다. 메일이 도착하지 않으면 스팸함을 확인하세요."}
+    result: dict = {"ok": True, "message": "재설정 안내를 이메일로 발송했습니다. 메일이 도착하지 않으면 스팸함을 확인하세요."}
+    # SMTP 미설정 환경(개발/스테이징)에서는 토큰을 응답에 포함 — 이메일 발송 불가 시 우회용
+    settings = get_settings()
+    if not settings.email_enabled and reset_token:
+        result["_dev_reset_token"] = reset_token
+        result["_dev_reset_url"] = (
+            f"{settings.frontend_url}/reset-password?token={reset_token}"
+        )
+    return result
 
 
 @router.post("/auth/password/reset")
