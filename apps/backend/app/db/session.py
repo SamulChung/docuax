@@ -16,8 +16,36 @@ class Base(DeclarativeBase):
     pass
 
 
+def _make_async_url(url: str) -> str:
+    """DATABASE_URL을 SQLAlchemy 비동기 드라이버 형식으로 변환.
+
+    Railway/Heroku 제공 URL 패턴:
+      postgres://...   → postgresql+asyncpg://...
+      postgresql://... → postgresql+asyncpg://...
+    SQLite (로컬 개발):
+      sqlite:///...    → sqlite+aiosqlite:///...
+    이미 올바른 형식이면 그대로 반환.
+    """
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql+asyncpg://", 1)
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    if url.startswith("sqlite:///") and "+aiosqlite" not in url:
+        return url.replace("sqlite:///", "sqlite+aiosqlite:///", 1)
+    return url
+
+
 _settings = get_settings()
-engine = create_async_engine(_settings.database_url, echo=False, future=True)
+_db_url = _make_async_url(_settings.database_url)
+
+# PostgreSQL 연결 풀 설정 (SQLite는 pool_pre_ping 불필요하지만 무해)
+_engine_kwargs: dict = {"echo": False, "future": True}
+if _db_url.startswith("postgresql"):
+    _engine_kwargs["pool_pre_ping"] = True   # 연결 상태 사전 확인
+    _engine_kwargs["pool_size"] = 5
+    _engine_kwargs["max_overflow"] = 10
+
+engine = create_async_engine(_db_url, **_engine_kwargs)
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
 
