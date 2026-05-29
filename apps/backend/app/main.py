@@ -52,6 +52,18 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     macro_stats = get_macro_registry().stats()
     log.info("매크로 레지스트리 준비", **macro_stats)
     await init_db()
+
+    # 기본 프롬프트 팩 시드 (농협·공공기관 47종) — 멱등, 이미 있으면 skip
+    try:
+        from app.seeds.nhcoopbank_prompts import seed_prompts_sync
+        seeded = seed_prompts_sync(owner_id="")
+        if seeded:
+            log.info("기본 프롬프트 팩 시드 완료", count=seeded)
+        else:
+            log.debug("기본 프롬프트 팩: 이미 존재, skip")
+    except Exception as seed_err:  # noqa: BLE001
+        log.warning("기본 프롬프트 팩 시드 실패 (무시하고 계속)", error=str(seed_err))
+
     yield
     log.info("DocuAX 종료")
 

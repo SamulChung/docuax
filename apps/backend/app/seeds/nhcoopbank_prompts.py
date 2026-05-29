@@ -656,41 +656,47 @@ PROMPT_PACK: list[dict] = [
 ]
 
 
-async def seed_prompts(session: object, org_id: str | None = None) -> int:
-    """프롬프트 팩을 DB에 시드한다.
+def seed_prompts_sync(owner_id: str = "") -> int:
+    """프롬프트 팩을 파일 기반 저장소에 시드한다 (동기).
 
-    session: SQLAlchemy AsyncSession
-    org_id: 조직 ID (None이면 공개 프롬프트)
-    반환: 새로 삽입된 건수 (이미 있는 건 skip)
+    owner_id: 소유자 ID ("" 이면 공유 프롬프트로 저장)
+    반환: 새로 삽입된 건수 (이미 같은 title+organization_label 가 있으면 skip)
     """
-    from sqlalchemy import select
+    from app.services.prompt_library import create_prompt, list_prompts
 
-    try:
-        from app.models.prompt import Prompt  # type: ignore[import]
-    except ImportError:
-        return 0  # Prompt 모델 미구현 시 skip
+    # 이미 존재하는 제목+기관 조합 수집 (멱등성)
+    existing = {
+        (p.title, p.organization_label)
+        for p in list_prompts(scope="all")
+    }
 
     inserted = 0
     for item in PROMPT_PACK:
-        existing = await session.execute(
-            select(Prompt).where(
-                Prompt.title == item["title"],
-                Prompt.organization_label == item["organization_label"],
-            )
-        )
-        if existing.scalars().first():
+        key = (item["title"], item["organization_label"])
+        if key in existing:
             continue
 
-        p = Prompt(
+        axes: dict = item.get("axes", {})
+        create_prompt(
             title=item["title"],
+            content=item["content"],
             organization_label=item["organization_label"],
             task_type=item["task_type"],
-            content=item["content"],
-            axes=item.get("axes", {}),
-            organization_id=org_id,
+            owner_id=owner_id,
+            shared_with_org=True,   # 전체 공개
+            role=axes.get("role", ""),
+            field=axes.get("domain", ""),
+            purpose=axes.get("purpose", ""),
         )
-        session.add(p)
         inserted += 1
 
-    await session.commit()
     return inserted
+
+
+async def seed_prompts(session: object = None, org_id: str | None = None) -> int:  # noqa: ARG001
+    """비동기 래퍼 — main.py lifespan 에서 호출.
+
+    session 인자는 하위 호환을 위해 유지하지만 사용하지 않는다.
+    (파일 기반 저장소이므로 DB 세션 불필요)
+    """
+    return seed_prompts_sync(owner_id="")
