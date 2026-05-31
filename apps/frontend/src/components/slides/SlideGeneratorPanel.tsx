@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CustomTheme, SlideSchema, ThemeName } from "@/lib/slides/types";
 import { generateSlides } from "@/lib/api";
 import ThemeUploader from "./ThemeUploader";
@@ -26,6 +26,20 @@ export default function SlideGeneratorPanel({ onGenerated }: Props) {
   const [customTheme, setCustomTheme] = useState<CustomTheme | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 문서 → 슬라이드 내보내기: PreviewPane에서 sessionStorage로 전달된 텍스트 자동 채우기
+  useEffect(() => {
+    try {
+      const prefill = sessionStorage.getItem("docuax_slide_prefill");
+      if (prefill) {
+        setMode("document");
+        setDocumentText(prefill);
+        sessionStorage.removeItem("docuax_slide_prefill"); // 일회용
+      }
+    } catch {
+      // sessionStorage 접근 불가 시 무시
+    }
+  }, []); // 마운트 1회만 실행
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

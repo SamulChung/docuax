@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Check, ClipboardCopy, Loader2 } from "lucide-react";
 
 import { copyPreviewToClipboard } from "@/lib/clipboard";
@@ -1086,6 +1087,8 @@ function BlockRenderer({
 // ─────────────────────────────────────────────────────────────────────────
 
 export function PreviewPane() {
+  const router = useRouter();
+  const source = useWorkspace((s) => s.source);
   const preview = useWorkspace((s) => s.preview);
   const setPreview = useWorkspace((s) => s.setPreview);
   const busy = useWorkspace((s) => s.busy);
@@ -1100,6 +1103,20 @@ export function PreviewPane() {
   // 인라인 편집 상태 — 표 셀 한 곳 또는 블록 하나
   const [editingCell, setEditingCell] = useState<{ blockId: string; row: number; col: number } | null>(null);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
+
+  // 슬라이드 내보내기 — 문서 원문을 sessionStorage에 저장 후 /slides 이동
+  const handleExportToSlides = () => {
+    const text = (source ?? "").trim();
+    if (!text) return;
+    const MAX = 50_000;
+    const payload = text.length > MAX ? text.slice(0, MAX) : text;
+    try {
+      sessionStorage.setItem("docuax_slide_prefill", payload);
+    } catch {
+      // sessionStorage 접근 불가(프라이빗 브라우저 등) 시 무시
+    }
+    router.push("/slides");
+  };
 
   // 클립보드 복사 — 전체 또는 선택 블록
   const [copyState, setCopyState] = useState<"idle" | "copying" | "copied" | "error">("idle");
@@ -1218,6 +1235,17 @@ export function PreviewPane() {
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2 whitespace-nowrap text-[11px]">
+          {/* 🎞 슬라이드 내보내기 */}
+          {preview && (
+            <button
+              onClick={handleExportToSlides}
+              disabled={!source?.trim()}
+              className="flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded border border-neutral-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-neutral-600 transition-all hover:border-brand hover:text-brand disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400"
+              title="문서 내용을 슬라이드 생성기로 내보내기"
+            >
+              🎞 슬라이드
+            </button>
+          )}
           {/* 📋 전체 복사 — Word·한컴 등에 서식 유지 붙여넣기 */}
           {preview && (
             <button
