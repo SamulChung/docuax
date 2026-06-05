@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { BookOpen, MessageCircle, Sparkles, Wand2 } from "lucide-react";
 
 import { ChatDock } from "@/components/chat/ChatDock";
+import { FormFillPanel } from "@/components/editor/FormFillPanel";
 import { HwpDropZone } from "@/components/editor/HwpDropZone";
 import { InsertVisualBar } from "@/components/editor/InsertVisualBar";
 import { PromptLibrary } from "@/components/prompts/PromptLibrary";
@@ -71,6 +72,11 @@ export function Editor() {
       {/* 시각 요소 삽입 툴바 — 표지·이미지·차트·다이어그램·수식
           taRef 를 전달해 textarea 의 현재 커서 위치에 삽입되도록 */}
       <InsertVisualBar textareaRef={taRef} />
+
+      {/* 양식 자동 채우기 패널 — 플레이스홀더 감지 시 자동 표시 */}
+      <div className="px-3 pt-1 empty:hidden">
+        <FormFillPanel />
+      </div>
 
       {/* 마크다운 입력 영역 — flex-1, 채팅 dock 위에 위치.
           빈 상태일 때는 textarea 위에 안내 카드 오버레이 — 클릭 시 자동으로 textarea 포커스 */}
