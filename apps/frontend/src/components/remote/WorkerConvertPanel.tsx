@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { Download, FileText, Zap } from "lucide-react";
 
 import { downloadUrl } from "@/lib/api";
@@ -29,6 +29,12 @@ export function WorkerConvertPanel({ onConvert, onMacro, busy }: WorkerConvertPa
     // 드롭 직후 자동 변환 — 빠른 변환 강제
     onConvert({ forceFast: true });
   }, [onConvert]);
+
+  useEffect(() => {
+    const handler = () => { if (!busy) onConvert({ forceFast: true }); };
+    window.addEventListener("docuax:auto-convert", handler);
+    return () => window.removeEventListener("docuax:auto-convert", handler);
+  }, [busy, onConvert]);
 
   return (
     <div className="space-y-3 p-3">

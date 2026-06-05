@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BookOpen, MessageCircle, Sparkles, Wand2 } from "lucide-react";
 
 import { ChatDock } from "@/components/chat/ChatDock";
@@ -15,9 +15,18 @@ export function Editor() {
   const setSource = useWorkspace((s) => s.setSource);
   const title = useWorkspace((s) => s.title);
   const setTitle = useWorkspace((s) => s.setTitle);
+  const autoConvert = useWorkspace((s) => s.autoConvert);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [promptsOpen, setPromptsOpen] = useState(false);
+
+  useEffect(() => {
+    if (!autoConvert || !source.trim()) return;
+    const timer = setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("docuax:auto-convert"));
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [source, autoConvert]);
 
   // ChatDock 이 하단을 차지하므로 textarea 는 flex-1 + 내부 스크롤 (자동 높이 조정 제거)
 

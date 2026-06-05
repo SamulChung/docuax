@@ -28,6 +28,8 @@ export function TopBar() {
   const persona = useWorkspace((s) => s.persona);
   const togglePersona = useWorkspace((s) => s.togglePersona);
   const resetWorkspace = useWorkspace((s) => s.resetWorkspace);
+  const autoConvert = useWorkspace((s) => s.autoConvert);
+  const setAutoConvert = useWorkspace((s) => s.setAutoConvert);
   const sourceLen = useWorkspace((s) => s.source.length);
   const previewBlocks = useWorkspace((s) => s.preview?.blocks?.length ?? 0);
   const setChatExpanded = useChat((s) => s.setExpanded);
@@ -135,6 +137,19 @@ export function TopBar() {
 
           {/* 일일 사용량 — 로그인 사용자에게만 노출 */}
           <UsageBadge />
+
+          {/* 자동 변환 토글 */}
+          <button
+            onClick={() => setAutoConvert(!autoConvert)}
+            className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
+              autoConvert
+                ? "border-emerald-400 bg-emerald-50 text-emerald-700 dark:border-emerald-600 dark:bg-emerald-950 dark:text-emerald-300"
+                : "border-neutral-200 text-neutral-500 hover:border-brand hover:text-brand dark:border-neutral-700"
+            }`}
+            title={autoConvert ? "자동 변환 켜짐 — 입력 후 2.5초 자동 변환" : "자동 변환 꺼짐"}
+          >
+            {autoConvert ? "⚡ 자동" : "⚡ 수동"}
+          </button>
 
           {/* 슬라이드 편집기 */}
           <Link

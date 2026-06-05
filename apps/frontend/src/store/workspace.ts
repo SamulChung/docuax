@@ -56,6 +56,10 @@ interface WorkspaceState {
   fastConvert: boolean;
   setFastConvert: (v: boolean) => void;
 
+  /** 자동 변환 — 입력 후 2.5초 debounce 로 자동 변환 */
+  autoConvert: boolean;
+  setAutoConvert: (v: boolean) => void;
+
   /** 첫화면으로 — 에디터·변환결과·선택 모두 초기화. 채팅 대화는 별도 store 라 유지됨. */
   resetWorkspace: () => void;
 }
@@ -169,6 +173,14 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
 
   fastConvert: false,
   setFastConvert: (v) => set({ fastConvert: v }),
+
+  autoConvert: (() => {
+    try { return localStorage.getItem("docuax_auto_convert") === "true"; } catch { return false; }
+  })(),
+  setAutoConvert: (v) => {
+    set({ autoConvert: v });
+    try { localStorage.setItem("docuax_auto_convert", String(v)); } catch {}
+  },
 
   resetWorkspace: () =>
     set({
