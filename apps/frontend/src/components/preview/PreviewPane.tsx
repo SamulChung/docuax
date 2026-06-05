@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, ClipboardCopy, Loader2 } from "lucide-react";
 
 import { copyPreviewToClipboard } from "@/lib/clipboard";
+import { DiffView } from "./DiffView";
 
 import {
   editBlock,
@@ -1099,6 +1100,9 @@ export function PreviewPane() {
   const selectAll = useWorkspace((s) => s.selectAll);
   const recentlyChangedIds = useWorkspace((s) => s.recentlyChangedIds);
   const setRecentlyChanged = useWorkspace((s) => s.setRecentlyChanged);
+  const prevSource = useWorkspace((s) => s.prevSource);
+
+  const [showDiff, setShowDiff] = useState(false);
 
   // 인라인 편집 상태 — 표 셀 한 곳 또는 블록 하나
   const [editingCell, setEditingCell] = useState<{ blockId: string; row: number; col: number } | null>(null);
@@ -1235,6 +1239,20 @@ export function PreviewPane() {
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2 whitespace-nowrap text-[11px]">
+          {/* 📋 신구대조표 — 이전 버전과 비교 */}
+          {preview && prevSource && (
+            <button
+              onClick={() => setShowDiff((v) => !v)}
+              className={`flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded border px-2 py-0.5 text-[10px] font-semibold transition-all ${
+                showDiff
+                  ? "border-amber-400 bg-amber-50 text-amber-700 dark:border-amber-600 dark:bg-amber-950 dark:text-amber-300"
+                  : "border-neutral-200 bg-white text-neutral-600 hover:border-brand hover:text-brand dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400"
+              }`}
+              title="신구대조표 — 이전 버전과 비교"
+            >
+              📋 비교
+            </button>
+          )}
           {/* 🎞 슬라이드 내보내기 */}
           {preview && (
             <button
@@ -1304,7 +1322,11 @@ export function PreviewPane() {
         </div>
       </div>
 
-      <div className="preview flex-1 overflow-auto p-6 text-[14px]">
+      <div className="preview flex-1 overflow-auto text-[14px]">
+        {showDiff && prevSource ? (
+          <DiffView oldText={prevSource} newText={source} />
+        ) : (
+        <div className="h-full overflow-auto p-6">
         {busy && <ConvertProgress />}
         {!preview && !busy && (
           <div className="flex h-full items-center justify-center text-center text-sm text-neutral-400">
@@ -1355,6 +1377,8 @@ export function PreviewPane() {
               />
             ))}
           </article>
+        )}
+        </div>
         )}
       </div>
     </div>

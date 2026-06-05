@@ -24,17 +24,19 @@ export interface WorkerConvertPanelProps {
 export function WorkerConvertPanel({ onConvert, onMacro, busy }: WorkerConvertPanelProps) {
   const source = useWorkspace((s) => s.source);
   const preview = useWorkspace((s) => s.preview);
+  const setPrevSource = useWorkspace((s) => s.setPrevSource);
 
   const handleDocxDirect = useCallback(() => {
     // 드롭 직후 자동 변환 — 빠른 변환 강제
+    setPrevSource(source);
     onConvert({ forceFast: true });
-  }, [onConvert]);
+  }, [onConvert, setPrevSource, source]);
 
   useEffect(() => {
-    const handler = () => { if (!busy) onConvert({ forceFast: true }); };
+    const handler = () => { if (!busy) { setPrevSource(source); onConvert({ forceFast: true }); } };
     window.addEventListener("docuax:auto-convert", handler);
     return () => window.removeEventListener("docuax:auto-convert", handler);
-  }, [busy, onConvert]);
+  }, [busy, onConvert, setPrevSource, source]);
 
   return (
     <div className="space-y-3 p-3">
@@ -43,7 +45,7 @@ export function WorkerConvertPanel({ onConvert, onMacro, busy }: WorkerConvertPa
 
       {/* 한 번에 변환 버튼 — 워커의 메인 동작 */}
       <button
-        onClick={() => onConvert({ forceFast: true })}
+        onClick={() => { setPrevSource(source); onConvert({ forceFast: true }); }}
         disabled={busy || source.length === 0}
         className="flex w-full items-center justify-center gap-2 rounded-md bg-brand py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-brand-soft disabled:cursor-not-allowed disabled:opacity-50"
         title={source.length === 0 ? "에디터에 마크다운을 입력하거나 .md 파일을 드롭하세요" : "마크다운 → DOCX 즉시 변환"}

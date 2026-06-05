@@ -60,6 +60,10 @@ interface WorkspaceState {
   autoConvert: boolean;
   setAutoConvert: (v: boolean) => void;
 
+  /** 이전 소스 텍스트 — 신구대조표(diff view) 용 */
+  prevSource: string | null;
+  setPrevSource: (s: string | null) => void;
+
   /** 첫화면으로 — 에디터·변환결과·선택 모두 초기화. 채팅 대화는 별도 store 라 유지됨. */
   resetWorkspace: () => void;
 }
@@ -170,6 +174,9 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
     });
   },
   clearJump: () => set({ jumpTarget: null }),
+
+  prevSource: null,
+  setPrevSource: (s) => set({ prevSource: s }),
 
   fastConvert: false,
   setFastConvert: (v) => set({ fastConvert: v }),

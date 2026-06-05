@@ -26,11 +26,14 @@ export function HeavyConvertPanel({ onConvert, onMacro, busy }: HeavyConvertPane
   const preview = useWorkspace((s) => s.preview);
   const fastConvert = useWorkspace((s) => s.fastConvert);
   const setFastConvert = useWorkspace((s) => s.setFastConvert);
+  const source = useWorkspace((s) => s.source);
+  const setPrevSource = useWorkspace((s) => s.setPrevSource);
 
   // 드롭 후 자동 변환 — 헤비는 정밀 변환이 기본이라 forceFast 사용 안 함
   const onAfterDrop = useCallback(() => {
+    setPrevSource(source);
     onConvert();
-  }, [onConvert]);
+  }, [onConvert, setPrevSource, source]);
 
   return (
     <div className="space-y-3 p-3">
@@ -41,7 +44,7 @@ export function HeavyConvertPanel({ onConvert, onMacro, busy }: HeavyConvertPane
       <MarkdownDropZone variant="compact" onAfterLoad={onAfterDrop} />
 
       <button
-        onClick={() => onConvert()}
+        onClick={() => { setPrevSource(source); onConvert(); }}
         disabled={busy}
         className="flex w-full items-center justify-center gap-2 rounded-md bg-brand py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-brand-soft disabled:opacity-50"
         title="조직 양식 적용 · LLM 분석·검토 풀단계 변환"
