@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1 import (
-    admin, auth, billing, chat, compliance, convert, edit, health, macros,
+    admin, auth, batch, billing, chat, compliance, convert, edit, health, macros,
     me_api_keys, metrics, organizations, prompts, providers, rag, render,
     samples, settings, slides, uploads,
 )
@@ -9,6 +9,7 @@ from app.api.v1 import (
 api_router = APIRouter(prefix="/v1")
 api_router.include_router(health.router, tags=["health"])
 api_router.include_router(admin.router, tags=["admin"])
+api_router.include_router(batch.router, tags=["batch"])
 api_router.include_router(auth.router, tags=["auth"])
 api_router.include_router(billing.router, tags=["billing"])
 api_router.include_router(chat.router, tags=["chat"])

@@ -160,6 +160,11 @@ export function TopBar() {
             슬라이드
           </Link>
 
+          {/* 배치 변환 */}
+          <Link href="/batch" className="text-neutral-600 hover:text-brand" title="배치 변환">
+            배치
+          </Link>
+
           {/* 요금제 — 누구나 접근 */}
           <Link
             href="/pricing"
