@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { BookOpen, MessageCircle, Sparkles, Wand2 } from "lucide-react";
 
 import { ChatDock } from "@/components/chat/ChatDock";
+import { HwpDropZone } from "@/components/editor/HwpDropZone";
 import { InsertVisualBar } from "@/components/editor/InsertVisualBar";
 import { PromptLibrary } from "@/components/prompts/PromptLibrary";
 import { SamplePicker } from "@/components/samples/SamplePicker";
@@ -52,6 +53,7 @@ export function Editor() {
             <Sparkles size={11} />
             프롬프트
           </button>
+          <HwpDropZone />
           <span className="shrink-0 whitespace-nowrap text-[10px] text-neutral-500">
             {source.length.toLocaleString()}자
           </span>
