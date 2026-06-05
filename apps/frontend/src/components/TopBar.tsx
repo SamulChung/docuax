@@ -165,6 +165,11 @@ export function TopBar() {
             배치
           </Link>
 
+          {/* MCP 서버 설정 */}
+          <Link href="/mcp" className="text-neutral-600 hover:text-brand" title="MCP 서버 설정">
+            MCP
+          </Link>
+
           {/* 요금제 — 누구나 접근 */}
           <Link
             href="/pricing"

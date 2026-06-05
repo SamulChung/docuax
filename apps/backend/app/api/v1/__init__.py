@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     admin, auth, batch, billing, chat, compliance, convert, edit, health, macros,
-    me_api_keys, metrics, organizations, prompts, providers, rag, render,
+    mcp, me_api_keys, metrics, organizations, prompts, providers, rag, render,
     samples, settings, slides, uploads,
 )
 
@@ -17,6 +17,7 @@ api_router.include_router(compliance.router, tags=["compliance"])
 api_router.include_router(convert.router, tags=["convert"])
 api_router.include_router(edit.router, tags=["edit"])
 api_router.include_router(macros.router, tags=["macros"])
+api_router.include_router(mcp.router, tags=["mcp"])
 api_router.include_router(me_api_keys.router, tags=["me"])
 api_router.include_router(metrics.router, tags=["metrics"])
 api_router.include_router(organizations.router, tags=["organizations"])
