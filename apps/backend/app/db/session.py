@@ -25,25 +25,39 @@ def _make_async_url(url: str) -> str:
     SQLite (로컬 개발):
       sqlite:///...    → sqlite+aiosqlite:///...
     이미 올바른 형식이면 그대로 반환.
+
+    주의: asyncpg는 URL의 sslmode 파라미터를 지원하지 않으므로 제거한다.
+    Railway 내부 네트워크는 SSL 없이도 안전하게 연결된다.
     """
     if url.startswith("postgres://"):
-        return url.replace("postgres://", "postgresql+asyncpg://", 1)
-    if url.startswith("postgresql://"):
-        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    if url.startswith("sqlite:///") and "+aiosqlite" not in url:
+        url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif url.startswith("postgresql://"):
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    elif url.startswith("sqlite:///") and "+aiosqlite" not in url:
         return url.replace("sqlite:///", "sqlite+aiosqlite:///", 1)
+
+    # asyncpg는 sslmode URL 파라미터를 인식하지 못해 에러 발생
+    # Railway 내부망은 SSL 불필요 → sslmode 파라미터 제거
+    if "sslmode=" in url:
+        import re
+        url = re.sub(r"[?&]sslmode=[^&]*", "", url)
+        # 파라미터 제거 후 '?' 없이 '&'만 남으면 정리
+        url = re.sub(r"\?&", "?", url)
+        url = url.rstrip("?")
+
     return url
 
 
 _settings = get_settings()
 _db_url = _make_async_url(_settings.database_url)
 
-# PostgreSQL 연결 풀 설정 (SQLite는 pool_pre_ping 불필요하지만 무해)
+# PostgreSQL 연결 풀 설정
 _engine_kwargs: dict = {"echo": False, "future": True}
 if _db_url.startswith("postgresql"):
     _engine_kwargs["pool_pre_ping"] = True   # 연결 상태 사전 확인
     _engine_kwargs["pool_size"] = 5
     _engine_kwargs["max_overflow"] = 10
+    _engine_kwargs["connect_args"] = {"ssl": False}  # Railway 내부망 SSL 불필요
 
 engine = create_async_engine(_db_url, **_engine_kwargs)
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
