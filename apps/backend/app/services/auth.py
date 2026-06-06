@@ -144,7 +144,8 @@ async def create_refresh_token(db: AsyncSession, user_id: str) -> str:
     from app.models import RefreshToken
 
     raw = secrets.token_urlsafe(32)
-    expires_at = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_TTL_DAYS)
+    # timezone-naive datetime 사용 — asyncpg + PostgreSQL TIMESTAMP WITHOUT TIMEZONE 호환
+    expires_at = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_TTL_DAYS)
     rt = RefreshToken(
         user_id=user_id,
         token_hash=_hash_token(raw),
