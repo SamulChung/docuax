@@ -105,7 +105,7 @@ class Settings(BaseSettings):
 
     # ── Rate Limit (IP 분당) ──
     rate_limit_default_per_min: int = 120
-    rate_limit_auth_per_min: int = 10
+    rate_limit_auth_per_min: int = 100
     rate_limit_convert_per_min: int = 30
 
     # ── Stripe (결제, 선택) ──
