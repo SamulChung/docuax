@@ -44,9 +44,22 @@ def _build_single(name: str, settings: Settings) -> ModelProvider:
 
 @lru_cache
 def get_llm_provider() -> ModelProvider:
-    """현재 설정에 맞는 provider 반환. 프로세스 수명 동안 캐시."""
+    """현재 설정에 맞는 provider 반환. 프로세스 수명 동안 캐시.
+
+    LLM_PROVIDER=mock(기본)이어도 API 키가 있으면 자동으로 해당 프로바이더로 전환.
+    우선순위: anthropic → openai → mock
+    """
     settings = get_settings()
     choice = settings.llm_provider
+
+    # mock이 기본값인데 실제 키가 있으면 자동 전환
+    if choice == "mock":
+        if settings.anthropic_api_key:
+            log.info("LLM_PROVIDER=mock 이지만 ANTHROPIC_API_KEY 감지 → anthropic 자동 전환")
+            choice = "anthropic"
+        elif settings.openai_api_key:
+            log.info("LLM_PROVIDER=mock 이지만 OPENAI_API_KEY 감지 → openai 자동 전환")
+            choice = "openai"
 
     if choice == "chain":
         providers: list[ModelProvider] = []

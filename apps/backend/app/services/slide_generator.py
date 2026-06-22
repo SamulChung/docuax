@@ -101,7 +101,8 @@ async def generate_slides(
         raw = await provider.complete(messages, temperature=0.3, max_tokens=4096)  # Lower temperature → deterministic JSON structure
     except Exception as e:
         log.warning("슬라이드 생성 LLM 호출 실패, fallback 반환", error=str(e))
-        return _fallback_schema(theme)
+        src_text = document_text if mode == "document" else analysis_text
+        return _fallback_schema(theme, src_text)
 
     try:
         schema: dict[str, Any] = json.loads(raw)
@@ -138,32 +139,86 @@ async def generate_slides(
     return schema
 
 
-def _fallback_schema(theme: str) -> dict[str, Any]:
-    """파싱 실패 시 반환하는 최소 스키마."""
-    return {
-        "id": uuid.uuid4().hex,
-        "title": "슬라이드",
-        "theme": theme,
-        "customTheme": None,
-        "slides": [
-            {
-                "id": "slide-0",
-                "background": "#ffffff",
+def _fallback_schema(theme: str, document_text: str | None = None) -> dict[str, Any]:
+    """LLM 호출 실패 시 문서에서 기본 슬라이드 구조를 생성."""
+    schema_id = uuid.uuid4().hex
+    is_dark = theme in ("corp", "gradient")
+    bg_title = "#1e293b" if is_dark else "#f8fafc"
+    fg_title = "#f1f5f9" if is_dark else "#1e293b"
+    bg_body = "#0f172a" if theme == "gradient" else ("#1e293b" if is_dark else "#ffffff")
+    fg_body = "#e2e8f0" if is_dark else "#1e293b"
+    accent = "#6366f1"
+
+    slides: list[dict[str, Any]] = []
+
+    if document_text:
+        lines = [ln.strip() for ln in document_text.splitlines() if ln.strip()]
+        title_text = lines[0][:60] if lines else "슬라이드"
+
+        # 슬라이드 1: 표지
+        slides.append({
+            "id": "slide-0",
+            "background": bg_title,
+            "elements": [
+                {"id": "el-0-0", "type": "rect", "left": 0, "top": 0,
+                 "width": 8, "height": 720, "text": None, "fontSize": None,
+                 "fontWeight": None, "fill": accent, "src": None},
+                {"id": "el-0-1", "type": "textbox", "left": 80, "top": 240,
+                 "width": 1120, "height": 120, "text": title_text,
+                 "fontSize": 48, "fontWeight": "bold", "fill": fg_title, "src": None},
+                {"id": "el-0-2", "type": "textbox", "left": 80, "top": 380,
+                 "width": 600, "height": 48,
+                 "text": "AI 슬라이드 — 직접 편집하여 사용하세요",
+                 "fontSize": 20, "fontWeight": "normal",
+                 "fill": accent, "src": None},
+            ],
+        })
+
+        # 헤더(#) 또는 짧은 줄을 섹션으로
+        sections: list[tuple[str, list[str]]] = []
+        current_h: str | None = None
+        current_body: list[str] = []
+        for ln in lines[1:]:
+            if ln.startswith("#") or (len(ln) <= 30 and not ln.startswith("-")):
+                if current_h is not None:
+                    sections.append((current_h, current_body))
+                current_h = ln.lstrip("#").strip()
+                current_body = []
+            else:
+                current_body.append(ln)
+        if current_h:
+            sections.append((current_h, current_body))
+
+        for i, (heading, body) in enumerate(sections[:7]):
+            body_text = "\n".join(body[:5])
+            slides.append({
+                "id": f"slide-{i + 1}",
+                "background": bg_body,
                 "elements": [
-                    {
-                        "id": "el-0",
-                        "type": "textbox",
-                        "left": 80,
-                        "top": 280,
-                        "width": 1120,
-                        "height": 80,
-                        "text": "슬라이드 생성 중 오류가 발생했습니다. 다시 시도해 주세요.",
-                        "fontSize": 24,
-                        "fontWeight": "normal",
-                        "fill": "#374151",
-                        "src": None,
-                    }
+                    {"id": f"el-{i}-0", "type": "textbox", "left": 80, "top": 60,
+                     "width": 1120, "height": 80, "text": heading,
+                     "fontSize": 36, "fontWeight": "bold", "fill": fg_body, "src": None},
+                    {"id": f"el-{i}-1", "type": "rect", "left": 80, "top": 148,
+                     "width": 160, "height": 4, "text": None,
+                     "fontSize": None, "fontWeight": None, "fill": accent, "src": None},
+                    *([{"id": f"el-{i}-2", "type": "textbox", "left": 80, "top": 175,
+                        "width": 1120, "height": 400, "text": body_text,
+                        "fontSize": 20, "fontWeight": "normal",
+                        "fill": fg_body, "src": None}] if body_text else []),
                 ],
-            }
-        ],
-    }
+            })
+
+    if not slides:
+        slides = [{
+            "id": "slide-0",
+            "background": "#ffffff",
+            "elements": [{
+                "id": "el-0", "type": "textbox",
+                "left": 80, "top": 280, "width": 1120, "height": 160,
+                "text": "슬라이드를 생성하려면 왼쪽 패널에 문서 내용을 입력하세요.\n(AI 슬라이드 생성: Railway에 ANTHROPIC_API_KEY 설정)",
+                "fontSize": 20, "fontWeight": "normal", "fill": "#374151", "src": None,
+            }],
+        }]
+
+    title = (document_text or "").splitlines()[0][:60] if document_text else "슬라이드"
+    return {"id": schema_id, "title": title, "theme": theme, "customTheme": None, "slides": slides}
