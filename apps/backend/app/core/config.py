@@ -122,6 +122,9 @@ class Settings(BaseSettings):
         # 프로덕션 Vercel URL은 Railway 환경변수와 무관하게 항상 허용
         _always_allowed = [
             "https://docuax-qxyndyy63-specialdatastrategist-1934s-projects.vercel.app",
+            # DocuAI 리브랜딩 프로덕션 (2026-07 docuai 프로젝트)
+            "https://docuai-gray.vercel.app",
+            "https://docuai-specialdatastrategist-1934s-projects.vercel.app",
         ]
         for url in _always_allowed:
             if url not in origins:
