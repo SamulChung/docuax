@@ -5,6 +5,7 @@ import { undo, redo } from "@codemirror/commands";
 
 import { getEditorView, insertBlock, setHeadingLevel, wrapSelection } from "@/lib/editorCommands";
 import { downloadMarkdown } from "@/lib/download";
+import { dispatchAutoConvert } from "@/lib/events";
 import { useWorkspace } from "@/store/workspace";
 import { ExportMenu } from "./ExportMenu";
 
@@ -18,13 +19,15 @@ export function MenuBar() {
   const resetWorkspace = useWorkspace((s) => s.resetWorkspace);
   const setActiveTab = useWorkspace((s) => s.setActiveTab);
 
+  // 메뉴가 열려 있는 동안에만 outside-click 리스너 부착 (BrainDropdown 컨벤션)
   useEffect(() => {
+    if (!openMenu) return;
     const onDoc = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpenMenu(null);
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
+  }, [openMenu]);
 
   const withEditor = (fn: (v: NonNullable<ReturnType<typeof getEditorView>>) => void) => () => {
     const v = getEditorView();
@@ -56,7 +59,7 @@ export function MenuBar() {
       { label: "인용", action: () => insertBlock("> 인용문") },
     ],
     도구: [
-      { label: "변환 실행 (Ctrl+Enter)", action: () => window.dispatchEvent(new CustomEvent("docuax:auto-convert")) },
+      { label: "변환 실행 (Ctrl+Enter)", action: dispatchAutoConvert },
       { label: "슬라이드 탭으로", action: () => setActiveTab("slides") },
     ],
   };

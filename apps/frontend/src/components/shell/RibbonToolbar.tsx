@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 import { insertBlock, setHeadingLevel, toggleListMarker, wrapSelection } from "@/lib/editorCommands";
+import { dispatchAutoConvert } from "@/lib/events";
 import { useWorkspace } from "@/store/workspace";
 
 function RibbonButton({ title, onClick, children }: {
@@ -16,6 +17,7 @@ function RibbonButton({ title, onClick, children }: {
   return (
     <button
       title={title}
+      aria-label={title}
       onClick={onClick}
       className="rounded p-1.5 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
     >
@@ -63,7 +65,7 @@ export function RibbonToolbar() {
       <RibbonButton title="링크" onClick={() => wrapSelection("[", "](url)")}><LinkIcon size={15} /></RibbonButton>
       <Divider />
       <button
-        onClick={() => window.dispatchEvent(new CustomEvent("docuax:auto-convert"))}
+        onClick={dispatchAutoConvert}
         className="flex items-center gap-1 rounded bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300"
       >
         <Sparkles size={12} /> AI 변환·검토

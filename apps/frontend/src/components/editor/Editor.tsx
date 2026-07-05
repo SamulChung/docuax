@@ -11,6 +11,7 @@ import { MarkdownEditor } from "@/components/editor/MarkdownEditor";
 import { PromptLibrary } from "@/components/prompts/PromptLibrary";
 import { SamplePicker } from "@/components/samples/SamplePicker";
 import { insertBlock } from "@/lib/editorCommands";
+import { dispatchAutoConvert } from "@/lib/events";
 import { useWorkspace } from "@/store/workspace";
 
 export function Editor() {
@@ -24,7 +25,7 @@ export function Editor() {
   useEffect(() => {
     if (!autoConvert || !source.trim()) return;
     const timer = setTimeout(() => {
-      window.dispatchEvent(new CustomEvent("docuax:auto-convert"));
+      dispatchAutoConvert();
     }, 1000);
     return () => clearTimeout(timer);
   }, [source, autoConvert]);

@@ -22,13 +22,15 @@ export function ExportMenu() {
   const title = useWorkspace((s) => s.title);
   const setActiveTab = useWorkspace((s) => s.setActiveTab);
 
+  // 드롭다운이 열려 있는 동안에만 outside-click 리스너 부착 (BrainDropdown 컨벤션)
   useEffect(() => {
+    if (!open) return;
     const onDoc = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
+  }, [open]);
 
   const documentId = preview?.document_id ?? null;
 

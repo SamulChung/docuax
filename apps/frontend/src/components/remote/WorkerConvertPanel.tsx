@@ -4,6 +4,7 @@ import { useCallback, useEffect } from "react";
 import { Download, FileText, Zap } from "lucide-react";
 
 import { downloadUrl } from "@/lib/api";
+import { AUTO_CONVERT_EVENT } from "@/lib/events";
 import { useWorkspace } from "@/store/workspace";
 
 import { MarkdownDropZone } from "./MarkdownDropZone";
@@ -34,8 +35,8 @@ export function WorkerConvertPanel({ onConvert, onMacro, busy }: WorkerConvertPa
 
   useEffect(() => {
     const handler = () => { if (!busy) { setPrevSource(source); onConvert({ forceFast: true }); } };
-    window.addEventListener("docuax:auto-convert", handler);
-    return () => window.removeEventListener("docuax:auto-convert", handler);
+    window.addEventListener(AUTO_CONVERT_EVENT, handler);
+    return () => window.removeEventListener(AUTO_CONVERT_EVENT, handler);
   }, [busy, onConvert, setPrevSource, source]);
 
   return (
