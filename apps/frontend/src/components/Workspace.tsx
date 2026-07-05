@@ -7,6 +7,7 @@ import { ChatPanel } from "@/components/chat/ChatPanel";
 import { Editor } from "@/components/editor/Editor";
 import { PreviewPane } from "@/components/preview/PreviewPane";
 import { RemoteControl } from "@/components/remote/RemoteControl";
+import { CommandPalette } from "@/components/shell/CommandPalette";
 import { DocumentTabs } from "@/components/shell/DocumentTabs";
 import { MenuBar } from "@/components/shell/MenuBar";
 import { OutlinePanel } from "@/components/shell/OutlinePanel";
@@ -27,6 +28,8 @@ export function Workspace() {
   const [remoteCollapsed, setRemoteCollapsed] = useState(false);
   const activeTab = useWorkspace((s) => s.activeTab);
   const outlineOpen = useWorkspace((s) => s.outlineOpen);
+  const paletteOpen = useWorkspace((s) => s.paletteOpen);
+  const setPaletteOpen = useWorkspace((s) => s.setPaletteOpen);
 
   // 임시 저장 복구 — 에디터가 비어 있을 때만 (마운트 1회)
   useEffect(() => {
@@ -48,6 +51,18 @@ export function Workspace() {
       if (s.currentDocId && s.dirty && s.source.trim()) void saveCurrentDocument();
     }, 30_000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Ctrl+K 명령 팔레트 — 에디터 밖 포커스에서도 동작
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        useWorkspace.getState().setPaletteOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   return (
@@ -92,6 +107,8 @@ export function Workspace() {
 
       {/* 글로벌 채팅 확장 패널 — store 의 expanded=true 일 때만 표시 */}
       <ChatPanel />
+
+      {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
     </div>
   );
 }

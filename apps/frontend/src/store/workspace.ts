@@ -91,6 +91,10 @@ interface WorkspaceState {
   /** 목차 사이드바 표시 여부 — 리본 토글 버튼으로 전환 */
   outlineOpen: boolean;
   toggleOutline: () => void;
+
+  /** 명령 팔레트(Ctrl+K) 표시 여부 */
+  paletteOpen: boolean;
+  setPaletteOpen: (v: boolean) => void;
 }
 
 // 첫 진입 시 에디터는 빈 상태로 — Editor.tsx 의 안내 카드가 표시되며
@@ -231,6 +235,9 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
 
   outlineOpen: false,
   toggleOutline: () => set((s) => ({ outlineOpen: !s.outlineOpen })),
+
+  paletteOpen: false,
+  setPaletteOpen: (v) => set({ paletteOpen: v }),
 
   resetWorkspace: () => {
     cancelPendingDraft();

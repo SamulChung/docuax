@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 import { insertBlock, setHeadingLevel, toggleListMarker, wrapSelection } from "@/lib/editorCommands";
+import { TABLE_3X3_MD } from "@/lib/commands";
 import { dispatchAutoConvert } from "@/lib/events";
 import { useWorkspace } from "@/store/workspace";
 
@@ -59,10 +60,7 @@ export function RibbonToolbar() {
       <RibbonButton title="인용" onClick={() => insertBlock("> 인용문")}><Quote size={15} /></RibbonButton>
       <RibbonButton title="구분선" onClick={() => insertBlock("---")}><Minus size={15} /></RibbonButton>
       <Divider />
-      <RibbonButton
-        title="표 삽입 (3×3)"
-        onClick={() => insertBlock("| 항목 | 내용 | 비고 |\n|------|------|------|\n|      |      |      |\n|      |      |      |")}
-      >
+      <RibbonButton title="표 삽입 (3×3)" onClick={() => insertBlock(TABLE_3X3_MD)}>
         <Table size={15} />
       </RibbonButton>
       <RibbonButton title="링크" onClick={() => wrapSelection("[", "](url)")}><LinkIcon size={15} /></RibbonButton>

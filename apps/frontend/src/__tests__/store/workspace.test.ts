@@ -52,4 +52,12 @@ describe("workspace store — v3 shell state", () => {
     useWorkspace.getState().toggleOutline();
     expect(useWorkspace.getState().outlineOpen).toBe(false);
   });
+
+  it("paletteOpen 기본값 false, setPaletteOpen으로 전환", () => {
+    expect(useWorkspace.getState().paletteOpen).toBe(false);
+    useWorkspace.getState().setPaletteOpen(true);
+    expect(useWorkspace.getState().paletteOpen).toBe(true);
+    useWorkspace.getState().setPaletteOpen(false);
+    expect(useWorkspace.getState().paletteOpen).toBe(false);
+  });
 });

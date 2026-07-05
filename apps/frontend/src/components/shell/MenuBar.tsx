@@ -5,6 +5,7 @@ import { undo, redo } from "@codemirror/commands";
 import { openSearchPanel } from "@codemirror/search";
 
 import { getEditorView, insertBlock, setHeadingLevel, wrapSelection } from "@/lib/editorCommands";
+import { TABLE_3X3_MD } from "@/lib/commands";
 import { saveAsNewDocument, saveCurrentDocument } from "@/lib/docActions";
 import { downloadMarkdown } from "@/lib/download";
 import { dispatchAutoConvert } from "@/lib/events";
@@ -67,7 +68,7 @@ export function MenuBar() {
       { label: "밑줄 (Ctrl+U)", action: () => wrapSelection("<u>", "</u>") },
     ],
     삽입: [
-      { label: "표 (3×3)", action: () => insertBlock("| 항목 | 내용 | 비고 |\n|------|------|------|\n|      |      |      |\n|      |      |      |") },
+      { label: "표 (3×3)", action: () => insertBlock(TABLE_3X3_MD) },
       { label: "구분선", action: () => insertBlock("---") },
       { label: "인용", action: () => insertBlock("> 인용문") },
     ],

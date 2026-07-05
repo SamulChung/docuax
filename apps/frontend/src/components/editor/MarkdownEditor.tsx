@@ -19,6 +19,7 @@ const formatKeymap = keymap.of([
   { key: "Mod-u", run: () => (wrapSelection("<u>", "</u>"), true) },
   { key: "Mod-s", run: () => { void saveCurrentDocument(); return true; }, preventDefault: true },
   { key: "Mod-h", run: (v) => { openSearchPanel(v); return true; }, preventDefault: true },
+  { key: "Mod-k", run: () => { useWorkspace.getState().setPaletteOpen(true); return true; }, preventDefault: true },
 ]);
 
 const theme = EditorView.theme({
