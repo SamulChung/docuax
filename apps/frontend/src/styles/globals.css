@@ -70,7 +70,12 @@ body {
 .preview table.grid td, .preview table.grid th { @apply border border-neutral-300 p-1.5; }
 .preview table th { @apply bg-neutral-100 dark:bg-neutral-800 font-semibold; }
 
-/* ── 인쇄 — A4 미리보기 내용만 종이에 ───────────────────────────── */
+/* ── 인쇄 — A4 미리보기 내용만 종이에 ─────────────────────────────
+   클래스 계약:
+   - no-print   : 인쇄에서 완전히 숨길 셸 요소(메뉴·리본·에디터·푸터 등)에 부착
+   - print-root : 인쇄 대상(A4Sheet)과 그 사이의 overflow-hidden/고정높이 조상
+                  "전부"에 부착 — 하나라도 빠지면 인쇄가 잘림
+   - print-sheet/page-guide : A4Sheet 내부 전용 (종이 전체폭·가이드선 숨김) */
 @media print {
   .no-print { display: none !important; }
   /* 미리보기 영역만 남기고 전체 폭·스크롤 해제 */
