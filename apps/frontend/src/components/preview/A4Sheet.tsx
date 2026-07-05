@@ -25,7 +25,9 @@ export function A4Sheet({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex justify-center bg-neutral-100 py-6 dark:bg-neutral-950">
-      <div className="relative w-[794px] max-w-full bg-white shadow-md dark:bg-neutral-900">
+      {/* 용지는 항상 흰색 — .preview 텍스트 색(text-neutral-900)이 라이트 전용이므로
+          다크 모드에서도 dark: 배경 변형을 두지 않음 (Word/한글의 다크 UI와 동일한 방식) */}
+      <div className="relative w-[794px] max-w-full bg-white shadow-md">
         {/* 페이지 경계 가이드 — 콘텐츠 높이만큼 반복 */}
         <div
           aria-hidden
