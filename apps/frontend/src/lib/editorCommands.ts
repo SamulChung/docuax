@@ -13,6 +13,11 @@ export function getEditorView(): EditorView | null {
   return view;
 }
 
+/** 현재 커서 오프셋 (view 미등록 시 null). */
+export function getCursorOffset(): number | null {
+  return view ? view.state.selection.main.head : null;
+}
+
 /** 선택 영역을 before/after 마커로 감싼다. 선택이 없으면 마커만 삽입 후 커서를 가운데 둔다. */
 export function wrapSelection(before: string, after: string = before): void {
   if (!view) return;

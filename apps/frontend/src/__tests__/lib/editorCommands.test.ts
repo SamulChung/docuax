@@ -6,6 +6,7 @@ import {
   insertAtCursor,
   insertBlock,
   setHeadingLevel,
+  getCursorOffset,
 } from "@/lib/editorCommands";
 
 function makeView(doc: string, anchor: number, head?: number) {
@@ -62,5 +63,15 @@ describe("editorCommands", () => {
   it("view 미등록 시 아무 것도 하지 않는다 (throw 금지)", () => {
     registerEditorView(null);
     expect(() => wrapSelection("**")).not.toThrow();
+  });
+
+  it("getCursorOffset — 등록된 view 의 head 위치를 반환", () => {
+    makeView("hello world", 2, 7);
+    expect(getCursorOffset()).toBe(7);
+  });
+
+  it("getCursorOffset — view 미등록 시 null", () => {
+    registerEditorView(null);
+    expect(getCursorOffset()).toBeNull();
   });
 });

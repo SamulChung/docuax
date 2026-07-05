@@ -7,6 +7,7 @@ import { DiagramDialog } from "@/components/editor/DiagramDialog";
 import { EquationDialog } from "@/components/editor/EquationDialog";
 import { TableToChartDialog } from "@/components/editor/TableToChartDialog";
 import { DIAGRAM_TEMPLATES as SHARED_DIAGRAM_TEMPLATES } from "@/lib/diagramTemplates";
+import { getCursorOffset } from "@/lib/editorCommands";
 import { EQUATION_TEMPLATES as SHARED_EQUATION_TEMPLATES } from "@/lib/equationTemplates";
 import { findTableAtCursor, type ParsedTable } from "@/lib/markdownTable";
 import { useWorkspace } from "@/store/workspace";
@@ -473,7 +474,18 @@ export function InsertVisualBar({ textareaRef, onInsert }: InsertVisualBarProps 
   // 커서 이동·source 변경 시마다 표 감지 갱신 (200ms 디바운스)
   useEffect(() => {
     const ta = textareaRef?.current;
-    if (!ta) return;
+    if (!ta) {
+      // v3: textarea 없이 CodeMirror 가 연결된 경우 — editorCommands 의 커서 오프셋으로 감지.
+      // source 변경 시마다 effect 가 재실행되므로 입력 흐름에서는 충분히 갱신된다.
+      let timer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+        timer = null;
+        const cursor = getCursorOffset();
+        setDetectedTable(cursor === null ? null : findTableAtCursor(source, cursor));
+      }, 200);
+      return () => {
+        if (timer) clearTimeout(timer);
+      };
+    }
     let timer: ReturnType<typeof setTimeout> | null = null;
     const update = () => {
       if (timer) clearTimeout(timer);

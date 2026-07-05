@@ -18,7 +18,7 @@ const formatKeymap = keymap.of([
 
 const theme = EditorView.theme({
   "&": { height: "100%", fontSize: "13px" },
-  ".cm-scroller": { fontFamily: "var(--font-mono, ui-monospace, monospace)", lineHeight: "1.7" },
+  ".cm-scroller": { fontFamily: "ui-monospace, monospace", lineHeight: "1.7" },
   ".cm-content": { padding: "16px" },
   "&.cm-focused": { outline: "none" },
 });
