@@ -13,6 +13,31 @@ from app.services.document_cache import get_document_cache
 
 router = APIRouter()
 
+# X-Docuax-Warnings 헤더 상한 — 프록시(nginx proxy_buffer_size 등)가 거대 헤더를
+# 거부하지 않도록 항목 수·인코딩 후 바이트 수를 모두 제한한다.
+_WARNINGS_HEADER_MAX_ITEMS = 20
+_WARNINGS_HEADER_MAX_BYTES = 3800  # URL 인코딩 후 길이 기준 (< 4KB)
+
+
+def _warnings_header_value(warnings: list[str]) -> str:
+    """강등 경고 목록 → 헤더 값 (JSON 배열 → URL 인코딩, latin-1 안전).
+
+    형태: JSON 문자열 배열. 상한을 넘으면 앞에서부터 담고 마지막 요소를
+    "…외 N건" 요약으로 대체한다 — 프론트는 그대로 목록 표시하면 된다.
+    """
+    def encode(items: list[str]) -> str:
+        return urllib.parse.quote(json.dumps(items, ensure_ascii=False))
+
+    shown = list(warnings[:_WARNINGS_HEADER_MAX_ITEMS])
+    while shown:
+        omitted = len(warnings) - len(shown)
+        items = shown + ([f"…외 {omitted}건"] if omitted else [])
+        value = encode(items)
+        if len(value) <= _WARNINGS_HEADER_MAX_BYTES:
+            return value
+        shown.pop()
+    return encode([f"…외 {len(warnings)}건"])
+
 
 # ── 클립보드용 HTML / plain text ────────────────────────────────────────
 # specific 라우트는 catch-all `/render/{document_id}/{fmt}` 위에 등록.
@@ -104,14 +129,12 @@ async def render_download(document_id: str, fmt: str) -> FileResponse:
         raise HTTPException(status_code=500, detail=f"render failed: {e}") from e
 
     # 강등 경고 노출 (설계문서 §3.5) — UI가 "HWPX 사용 권장" 안내를 띄우는 데이터 소스.
-    # 헤더는 latin-1만 허용되므로 JSON → URL 인코딩. 프론트는
-    # JSON.parse(decodeURIComponent(header))로 복원.
+    # 프론트는 JSON.parse(decodeURIComponent(header))로 복원. 상한 처리(…외 N건)는
+    # _warnings_header_value 참고.
     headers: dict[str, str] = {}
     warnings = getattr(renderer, "warnings", None)
     if warnings:
-        headers["X-Docuax-Warnings"] = urllib.parse.quote(
-            json.dumps(warnings, ensure_ascii=False)
-        )
+        headers["X-Docuax-Warnings"] = _warnings_header_value(list(warnings))
 
     return FileResponse(
         path=str(rendered),

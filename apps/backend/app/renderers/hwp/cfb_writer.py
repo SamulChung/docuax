@@ -68,7 +68,9 @@ class CfbWriter:
 
     @staticmethod
     def _sort_key(e: _Entry) -> tuple[int, str]:
-        # CFB 스펙: 이름 길이 우선, 그다음 대문자 비교
+        # CFB 스펙: 이름 길이 우선, 그다음 대문자 비교.
+        # str.upper()는 스펙의 UTF-16 코드 단위 대문자 비교의 근사치 —
+        # HWP의 고정 스트림 이름(ASCII·한글)에는 결과가 동일하다.
         return (len(e.name), e.name.upper())
 
     def _flatten(self) -> list[_Entry]:

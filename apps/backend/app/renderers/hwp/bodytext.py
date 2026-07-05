@@ -38,6 +38,10 @@ MARGIN_HEADER = 4252
 MARGIN_FOOTER = 4252
 TEXT_WIDTH = PAGE_WIDTH - 2 * MARGIN_LR  # 42520
 
+# 표 기본 치수 (HWPUNIT) — 한글이 열 때 레이아웃을 재계산하므로 근사값이면 충분
+TABLE_ROW_HEIGHT = 1300     # 10pt 글줄 + 셀 안 여백
+TABLE_CELL_PADDING = 141    # 0.05cm — 한컴 기본 셀 안쪽 여백
+
 _CTRL_PARA_BREAK = "\r"  # 0x0D — 문단 끝
 _SANITIZE_RE = re.compile("[\x00-\x1f]")
 
@@ -73,6 +77,8 @@ class SectionBuilder:
     def __init__(self, docinfo: DocInfoBuilder) -> None:
         self.docinfo = docinfo
         self._paras: list[_Para] = []
+        # 개체 인스턴스 ID 시작값 — 임의의 0이 아닌 베이스 (0은 일부 리더가
+        # "미지정"으로 취급). 문서 내 유일하기만 하면 되는 값이라 상수면 충분.
         self._instance_id = 0x0AD0_0000
 
     def _next_instance_id(self) -> int:
@@ -86,9 +92,15 @@ class SectionBuilder:
         self._paras.append(_Para(segments=clean))
 
     def add_table(self, rows: list[list[list[Segment]]]) -> None:
-        """rows[r][c] = 셀 문단 세그먼트 목록. 병합 없는 기본 표만."""
+        """rows[r][c] = 셀 문단 세그먼트 목록. 병합 없는 기본 표만.
+
+        행이 없거나 모든 행이 비어 있으면(n_cols=0) ValueError —
+        호출자(렌더러)가 사전에 걸러 경고 처리한다.
+        """
         n_rows = len(rows)
-        n_cols = max(len(r) for r in rows)
+        n_cols = max((len(r) for r in rows), default=0)
+        if n_rows == 0 or n_cols == 0:
+            raise ValueError("빈 표는 직렬화할 수 없음 — 호출자가 강등 처리해야 함")
         para = _Para(
             prefix_ctrl_text=_ext_ctrl_char(0x0B, "tbl "),
             ctrl_records=self._table_ctrl_records(rows, n_rows, n_cols),
@@ -213,9 +225,9 @@ class SectionBuilder:
     def _table_ctrl_records(
         self, rows: list[list[list[Segment]]], n_rows: int, n_cols: int
     ) -> list[bytes]:
-        row_height = 1300
         cell_width = TEXT_WIDTH // n_cols
-        table_height = row_height * n_rows
+        table_height = TABLE_ROW_HEIGHT * n_rows
+        pad = TABLE_CELL_PADDING
 
         # 개체 공통 속성 (표 64) — 글자처럼 취급, 절대 크기
         common = _chid_bytes("tbl ") + struct.pack(
@@ -235,7 +247,7 @@ class SectionBuilder:
             1,             # 쪽 경계에서 셀 단위 나눔
             n_rows, n_cols,
             0,             # 셀 간격
-            141, 141, 141, 141,  # 안쪽 여백
+            pad, pad, pad, pad,  # 안쪽 여백
         )
         body += struct.pack(f"<{n_rows}H", *([n_cols] * n_rows))  # 행별 셀 수
         body += struct.pack("<H", 1)   # 테두리/배경 ID (1-기반)
@@ -258,8 +270,8 @@ class SectionBuilder:
                 ) + struct.pack(
                     "<4HiI4HHi",
                     c, r, 1, 1,                 # 주소·병합 없음
-                    cell_width, row_height,
-                    141, 141, 141, 141,         # 셀 안 여백
+                    cell_width, TABLE_ROW_HEIGHT,
+                    pad, pad, pad, pad,         # 셀 안 여백
                     1,                          # 테두리/배경 ID (1-기반)
                     cell_width,
                 )

@@ -42,8 +42,16 @@ class DocInfoBuilder:
 
     def __init__(self) -> None:
         self._char_shapes: dict[CharShapeKey, int] = {DEFAULT_KEY: 0}
+        self._built = False
 
     def char_shape_id(self, key: CharShapeKey) -> int:
+        # 빌드 순서 계약: BodyText 먼저(글자 모양 등록), 그다음 DocInfo.build().
+        # build() 후 새 모양이 등록되면 ID_MAPPINGS 카운트와 어긋나 파일이 깨진다.
+        if self._built:
+            raise RuntimeError(
+                "DocInfoBuilder.build() 이후에는 char_shape_id()를 호출할 수 없음 "
+                "— BodyText를 먼저 조립하세요"
+            )
         cid = self._char_shapes.get(key)
         if cid is None:
             cid = len(self._char_shapes)
@@ -143,6 +151,7 @@ class DocInfoBuilder:
     # ── 조립 ──────────────────────────────────────────────────────────
 
     def build(self, section_count: int = 1) -> bytes:
+        self._built = True
         parts = [
             record(HWPTAG_DOCUMENT_PROPERTIES, 0, self._document_properties(section_count)),
             record(HWPTAG_ID_MAPPINGS, 0, self._id_mappings()),

@@ -20,7 +20,12 @@ from app.pipeline.ir import Block, BlockType, DocumentIR, InlineRun
 from app.renderers.base import Renderer
 from app.renderers.hwp.bodytext import SectionBuilder, Segment, sanitize
 from app.renderers.hwp.cfb_writer import CfbWriter
-from app.renderers.hwp.docinfo import DEFAULT_FONT_SIZE_PT, CharShapeKey, DocInfoBuilder
+from app.renderers.hwp.docinfo import (
+    DEFAULT_FONT_SIZE_PT,
+    DEFAULT_KEY,
+    CharShapeKey,
+    DocInfoBuilder,
+)
 
 log = get_logger(__name__)
 
@@ -58,6 +63,7 @@ class HwpRenderer(Renderer):
         self.warnings: list[str] = []
 
     def render(self, ir: DocumentIR, output_path: Path) -> Path:
+        self.warnings = []  # 인스턴스 재사용 시 이전 렌더의 경고가 누적되지 않도록
         docinfo_builder = DocInfoBuilder()
         section = SectionBuilder(docinfo_builder)
 
@@ -94,7 +100,7 @@ class HwpRenderer(Renderer):
             li = block.list_item
             indent = "  " * max(li.depth, 0)
             marker = f"{li.index}{li.order_format.replace('1.', '.')}" if li.ordered else li.bullet_marker
-            prefix: list[Segment] = [(f"{indent}{marker} ", _run_key(InlineRun(text=" ")))]
+            prefix: list[Segment] = [(f"{indent}{marker} ", DEFAULT_KEY)]
             section.add_paragraph(prefix + _runs_to_segments(li.runs))
             return
 
@@ -104,7 +110,7 @@ class HwpRenderer(Renderer):
 
         if block.type in _DEGRADE_TYPES:
             label = _DEGRADE_TYPES[block.type]
-            section.add_paragraph([(block.to_plain_text(), _run_key(InlineRun(text=" ")))])
+            section.add_paragraph([(block.to_plain_text(), DEFAULT_KEY)])
             self.warnings.append(
                 f"{label} 블록({block.id})은 HWP 바이너리에서 텍스트로 강등되었습니다. "
                 "원본 유지가 필요하면 HWPX 출력을 사용하세요."
@@ -112,13 +118,13 @@ class HwpRenderer(Renderer):
             return
 
         if block.type == BlockType.THEMATIC_BREAK:
-            section.add_paragraph([("─" * 24, _run_key(InlineRun(text=" ")))])
+            section.add_paragraph([("─" * 24, DEFAULT_KEY)])
             return
 
         # PARAGRAPH·QUOTE·BOX·CODE·HTML·COVER 등 — 텍스트 문단으로
         segments = _runs_to_segments(block.runs)
         if not segments and block.to_plain_text():
-            segments = [(block.to_plain_text(), _run_key(InlineRun(text=" ")))]
+            segments = [(block.to_plain_text(), DEFAULT_KEY)]
         # 줄바꿈은 문단 분리로 (0x0A는 HWP 제어 문자)
         for para_segments in _split_multiline(segments):
             section.add_paragraph(para_segments)
@@ -126,16 +132,20 @@ class HwpRenderer(Renderer):
     def _add_table(self, section: SectionBuilder, block: Block) -> None:
         table = block.table
         assert table is not None
+        if not table.rows or table.col_count == 0:
+            # 행이 없거나 모든 행이 빈 표 — 직렬화 불가, 경고만 남기고 생략
+            self.warnings.append(
+                f"빈 표({block.id})는 내용이 없어 HWP 바이너리에서 생략되었습니다."
+            )
+            return
         has_merge = any(
             cell.colspan != 1 or cell.rowspan != 1 for row in table.rows for cell in row
         )
-        if not table.rows:
-            return
         if has_merge:
             # 병합 셀 표 — 탭 구분 텍스트로 강등 (구분자는 공백으로 안전화)
             for line in block.to_plain_text().split("\n"):
                 section.add_paragraph(
-                    [(sanitize(line.replace("\t", "    ")), _run_key(InlineRun(text=" ")))]
+                    [(sanitize(line.replace("\t", "    ")), DEFAULT_KEY)]
                 )
             self.warnings.append(
                 f"병합 셀 표({block.id})는 HWP 바이너리에서 텍스트로 강등되었습니다. "

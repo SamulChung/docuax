@@ -146,14 +146,12 @@ def test_bold_run_creates_second_char_shape(tmp_path):
     plain_ir = _ir([_para("보통")])
     bold_ir = _ir([_para("굵게", bold=True)])
 
-    def _char_shape_count(ir):
-        r = HwpRenderer()
-        out_dir = plain_ir.document_id + ("-b" if ir is bold_ir else "-p")
-        out = r.render(ir, tmp_path / f"{out_dir}.hwp")
+    def _char_shape_count(ir: DocumentIR, name: str) -> int:
+        out = HwpRenderer().render(ir, tmp_path / f"{name}.hwp")
         docinfo = _decompressed(out, "DocInfo")
         return sum(1 for tag, _, _ in iter_records(docinfo) if tag == HWPTAG_CHAR_SHAPE)
 
-    assert _char_shape_count(bold_ir) == _char_shape_count(plain_ir) + 1
+    assert _char_shape_count(bold_ir, "bold") == _char_shape_count(plain_ir, "plain") + 1
 
 
 def test_unsupported_block_degrades_with_warning(tmp_path):
@@ -187,6 +185,44 @@ def test_basic_table_renders(tmp_path):
     body = _decompressed(out, "BodyText/Section0")
     for cell_text in ("셀일일", "셀일이", "셀이일", "셀이이"):
         assert cell_text.encode("utf-16-le") in body
+
+
+def test_empty_rows_table_degrades_not_crashes(tmp_path):
+    """회귀: 모든 행이 빈 표(n_cols=0) — ZeroDivisionError 없이 경고+생략."""
+    ir = _ir([
+        Block(id="blk-0001", type=BlockType.TABLE, table=Table(rows=[[], []])),
+        _para("표 다음 문단"),
+    ])
+    renderer, out = _render(tmp_path, ir)
+    body = _decompressed(out, "BodyText/Section0")
+    assert "표 다음 문단".encode("utf-16-le") in body
+    assert any("빈 표" in w for w in renderer.warnings)
+
+
+def test_table_without_rows_warns(tmp_path):
+    ir = _ir([Block(id="blk-0001", type=BlockType.TABLE, table=Table(rows=[]))])
+    renderer, _ = _render(tmp_path, ir)
+    assert any("빈 표" in w for w in renderer.warnings)
+
+
+def test_renderer_reuse_does_not_accumulate_warnings(tmp_path):
+    ir = _ir([Block(id="blk-0001", type=BlockType.EQUATION,
+                    equation=EquationData(latex="x^2"))])
+    renderer = HwpRenderer()
+    renderer.render(ir, tmp_path / "first.hwp")
+    first = list(renderer.warnings)
+    renderer.render(ir, tmp_path / "second.hwp")
+    assert renderer.warnings == first  # 두 번째 렌더에서 경고가 누적되지 않음
+
+
+def test_docinfo_rejects_char_shape_after_build():
+    from app.renderers.hwp.docinfo import DocInfoBuilder
+
+    builder = DocInfoBuilder()
+    builder.char_shape_id((True, False, False, 12.0))
+    builder.build()
+    with pytest.raises(RuntimeError):
+        builder.char_shape_id((False, True, False, 10.0))
 
 
 def test_merged_cell_table_degrades(tmp_path):
@@ -329,3 +365,40 @@ async def test_render_download_exposes_degrade_warnings_header():
             r2 = await client.get("/api/v1/render/doc-hwp-clean-test/hwp")
             assert r2.status_code == 200
             assert "x-docuax-warnings" not in r2.headers
+
+
+async def test_render_download_warnings_header_is_size_capped():
+    """강등 블록 100개여도 헤더는 4KB 미만 + 말미 '…외 N건' 요약."""
+    import json
+    import os
+    import urllib.parse
+
+    from httpx import ASGITransport, AsyncClient
+
+    os.environ.setdefault("LLM_PROVIDER", "mock")
+    from app.main import create_app
+    from app.services.document_cache import get_document_cache
+
+    ir = DocumentIR(
+        document_id="doc-hwp-many-warn-test",
+        title="경고캡검증",
+        blocks=[
+            Block(id=f"blk-{i:04d}", type=BlockType.EQUATION,
+                  equation=EquationData(latex=f"x_{i}^2 + y_{i}^2"))
+            for i in range(100)
+        ],
+    )
+    get_document_cache().set(ir)
+
+    app = create_app()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with app.router.lifespan_context(app):
+            r = await client.get("/api/v1/render/doc-hwp-many-warn-test/hwp")
+            assert r.status_code == 200
+            raw = r.headers.get("x-docuax-warnings")
+            assert raw
+            assert len(raw) < 4096, f"헤더 {len(raw)}B — 4KB 초과"
+            warnings = json.loads(urllib.parse.unquote(raw))
+            assert isinstance(warnings, list) and warnings
+            assert "…외" in warnings[-1] and "건" in warnings[-1]
