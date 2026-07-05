@@ -442,12 +442,15 @@ const CHART_TEMPLATES: ChartTemplate[] = [
 /**
  * @param textareaRef  Editor 의 textarea ref — 커서 위치에 정확히 삽입하기 위해 필요.
  *                     없으면 본문 끝에 append (fallback).
+ * @param onInsert     v3: CodeMirror 등 외부 에디터로의 삽입 함수. 지정 시 textareaRef보다 우선.
  */
 interface InsertVisualBarProps {
   textareaRef?: React.RefObject<HTMLTextAreaElement>;
+  /** v3: CodeMirror 등 외부 에디터로의 삽입 함수. 지정 시 textareaRef보다 우선. */
+  onInsert?: (snippet: string) => void;
 }
 
-export function InsertVisualBar({ textareaRef }: InsertVisualBarProps = {}) {
+export function InsertVisualBar({ textareaRef, onInsert }: InsertVisualBarProps = {}) {
   const source = useWorkspace((s) => s.source);
   const setSource = useWorkspace((s) => s.setSource);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -503,6 +506,10 @@ export function InsertVisualBar({ textareaRef }: InsertVisualBarProps = {}) {
    *  - 커서 뒤가 빈 줄이 아니면 \n\n 뒤에 붙임
    */
   function insertAtCursor(snippet: string) {
+    if (onInsert) {
+      onInsert(snippet);
+      return;
+    }
     const ta = textareaRef?.current;
     if (!ta) {
       // fallback — 본문 끝에 추가
@@ -978,6 +985,13 @@ export function InsertVisualBar({ textareaRef }: InsertVisualBarProps = {}) {
           table={detectedTable}
           onClose={() => setTableToChartOpen(false)}
           onInsert={(chartMarkdown) => {
+            // v3: 외부 에디터(CodeMirror)가 연결된 경우 — 표 뒤가 아니라 현재 커서 위치에 삽입.
+            // (표→차트 버튼은 커서가 표 안에 있을 때만 활성화되므로 사실상 표 직후와 동일)
+            if (onInsert) {
+              onInsert(chartMarkdown);
+              setTableToChartOpen(false);
+              return;
+            }
             // 차트 스니펫을 표 직후에 삽입 — 표 원본 유지
             const insertOffset = detectedTable.endOffset;
             const before = source.slice(0, insertOffset);

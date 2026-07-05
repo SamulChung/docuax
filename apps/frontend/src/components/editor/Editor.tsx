@@ -1,23 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { BookOpen, MessageCircle, Sparkles, Wand2 } from "lucide-react";
 
 import { ChatDock } from "@/components/chat/ChatDock";
 import { FormFillPanel } from "@/components/editor/FormFillPanel";
 import { HwpDropZone } from "@/components/editor/HwpDropZone";
 import { InsertVisualBar } from "@/components/editor/InsertVisualBar";
+import { MarkdownEditor } from "@/components/editor/MarkdownEditor";
 import { PromptLibrary } from "@/components/prompts/PromptLibrary";
 import { SamplePicker } from "@/components/samples/SamplePicker";
+import { insertBlock } from "@/lib/editorCommands";
 import { useWorkspace } from "@/store/workspace";
 
 export function Editor() {
   const source = useWorkspace((s) => s.source);
-  const setSource = useWorkspace((s) => s.setSource);
   const title = useWorkspace((s) => s.title);
   const setTitle = useWorkspace((s) => s.setTitle);
   const autoConvert = useWorkspace((s) => s.autoConvert);
-  const taRef = useRef<HTMLTextAreaElement>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [promptsOpen, setPromptsOpen] = useState(false);
 
@@ -25,7 +25,7 @@ export function Editor() {
     if (!autoConvert || !source.trim()) return;
     const timer = setTimeout(() => {
       window.dispatchEvent(new CustomEvent("docuax:auto-convert"));
-    }, 2500);
+    }, 1000);
     return () => clearTimeout(timer);
   }, [source, autoConvert]);
 
@@ -70,8 +70,8 @@ export function Editor() {
         </div>
       </div>
       {/* 시각 요소 삽입 툴바 — 표지·이미지·차트·다이어그램·수식
-          taRef 를 전달해 textarea 의 현재 커서 위치에 삽입되도록 */}
-      <InsertVisualBar textareaRef={taRef} />
+          onInsert 로 CodeMirror 에디터의 현재 커서 위치에 삽입되도록 */}
+      <InsertVisualBar onInsert={insertBlock} />
 
       {/* 양식 자동 채우기 패널 — 플레이스홀더 감지 시 자동 표시 */}
       <div className="px-3 pt-1 empty:hidden">
@@ -81,14 +81,9 @@ export function Editor() {
       {/* 마크다운 입력 영역 — flex-1, 채팅 dock 위에 위치.
           빈 상태일 때는 textarea 위에 안내 카드 오버레이 — 클릭 시 자동으로 textarea 포커스 */}
       <div className="relative flex-1 overflow-hidden">
-        <textarea
-          ref={taRef}
-          value={source}
-          onChange={(e) => setSource(e.target.value)}
-          spellCheck={false}
-          className="absolute inset-0 h-full w-full resize-none overflow-auto bg-transparent p-4 font-mono text-[13px] leading-relaxed text-neutral-900 outline-none dark:text-neutral-100"
-          placeholder="① 템플릿 선택 → ② AI 채팅에 요청 → ③ 변환"
-        />
+        <div className="absolute inset-0">
+          <MarkdownEditor placeholderText="① 템플릿 선택 → ② AI 채팅에 요청 → ③ 변환" />
+        </div>
         {source.length === 0 && (
           <div
             className="pointer-events-none absolute inset-0 flex items-center justify-center p-4"
