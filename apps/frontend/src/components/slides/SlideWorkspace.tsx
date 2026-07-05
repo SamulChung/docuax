@@ -33,6 +33,8 @@ const EMPTY_SCHEMA: SlideSchema = {
   slides: [],
 };
 
+// named export 유지 필수 — Workspace.tsx가 dynamic(...).then((m) => m.SlideWorkspace)로
+// 지연 로드하므로 default export로 바꾸면 슬라이드 탭이 깨진다.
 export function SlideWorkspace() {
   const [schema, setSchema] = useState<SlideSchema>(EMPTY_SCHEMA);
   const [activeIndex, setActiveIndex] = useState(0);
