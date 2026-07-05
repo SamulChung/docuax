@@ -96,7 +96,7 @@ export function Footer() {
             </p>
           </div>
           <p className="mt-3 text-neutral-400">
-            © 2026 (주)텐에이아이 · DocuAI is a product of TenAI
+            © 2026 (주)텐에이아이 · GuelZip(글집) is a product of TenAI
           </p>
         </div>
       </div>

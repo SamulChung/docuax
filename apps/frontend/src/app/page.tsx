@@ -71,7 +71,7 @@ export default function LandingPage() {
               <div className="h-3 w-3 rounded-full bg-green-400" />
             </div>
             <div className="mx-4 flex-1 rounded bg-white px-3 py-1 text-center text-xs text-neutral-400 dark:bg-neutral-700">
-              docuai.vercel.app/app
+              guelzip.vercel.app/app
             </div>
           </div>
           {/* 앱 프리뷰 영역 */}
@@ -79,7 +79,7 @@ export default function LandingPage() {
             <div className="text-center">
               <div className="mb-3 text-5xl">📄</div>
               <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
-                DocuAI — 문서 AI 워크스페이스
+                글집 — 문서 AI 워크스페이스
               </p>
               <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-600">
                 가입 후 바로 사용해보세요
@@ -109,7 +109,7 @@ export default function LandingPage() {
 
       {/* 푸터 */}
       <footer className="flex items-center justify-between border-t border-neutral-100 px-8 py-6 text-xs text-neutral-400 dark:border-neutral-800">
-        <span>© 2026 DocuAI</span>
+        <span>© 2026 글집</span>
         <div className="flex gap-4">
           <a href="/terms" className="hover:text-neutral-600 hover:underline dark:hover:text-neutral-300">
             이용약관

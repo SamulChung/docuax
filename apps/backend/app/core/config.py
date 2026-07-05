@@ -125,6 +125,9 @@ class Settings(BaseSettings):
             # DocuAI 리브랜딩 프로덕션 (2026-07 docuai 프로젝트)
             "https://docuai-gray.vercel.app",
             "https://docuai-specialdatastrategist-1934s-projects.vercel.app",
+            # 글집(GuelZip) 리브랜딩 프로덕션 (2026-07 guelzip 프로젝트)
+            "https://guelzip.vercel.app",
+            "https://guelzip-specialdatastrategist-1934s-projects.vercel.app",
         ]
         for url in _always_allowed:
             if url not in origins:

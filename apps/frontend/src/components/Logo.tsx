@@ -1,7 +1,7 @@
-// DocuAI 공식 로고 — 베이스라인 정렬 락업.
+// 글집(GuelZip) 공식 로고 — 베이스라인 정렬 락업.
 // 출처: docuax_logo_baseline_aligned.html
 // 그라디언트: #0A3F90 → #1565C8 → #2998E5
-// 워드마크: Docu(#0F1A3D) + AI(#1B7FA8)
+// 워드마크: 글(#0F1A3D) + 집(#1B7FA8)
 
 import { useId } from "react";
 
@@ -11,7 +11,7 @@ interface SymbolProps {
   title?: string;
 }
 
-export function LogoSymbol({ size = 32, className, title = "DocuAI" }: SymbolProps) {
+export function LogoSymbol({ size = 32, className, title = "글집" }: SymbolProps) {
   const uid = useId().replace(/:/g, "");
   const gradId = `lg-${uid}`;
   const clipId = `clip-${uid}`;
@@ -51,7 +51,7 @@ export function LogoSymbol({ size = 32, className, title = "DocuAI" }: SymbolPro
 }
 
 interface LockupProps {
-  /** 심볼 가로/세로 (px). 워드마크는 비율(450/100)에 따라 자동 폭. */
+  /** 심볼 가로/세로 (px). 워드마크는 비율(230/100)에 따라 자동 폭. */
   size?: number;
   /** 심볼·워드마크 사이 간격 (px) */
   gap?: number;
@@ -59,12 +59,12 @@ interface LockupProps {
 }
 
 /**
- * DocuAI 풀 락업 — 심볼 + 워드마크 (베이스라인 정확 일치).
+ * 글집 풀 락업 — 심볼 + 워드마크 (베이스라인 정확 일치).
  * 원본 HTML의 size별 gap 비율을 따른다:
  *   100px → gap 6   64px → gap 4   40px → gap 3   26px → gap 2
  */
 export function LogoLockup({ size = 32, gap, className }: LockupProps) {
-  const wordmarkWidth = Math.round((size * 450) / 100);
+  const wordmarkWidth = Math.round((size * 230) / 100);
   const computedGap = gap ?? Math.max(2, Math.round((size * 6) / 100));
   return (
     <div
@@ -79,21 +79,22 @@ export function LogoLockup({ size = 32, gap, className }: LockupProps) {
       <svg
         width={wordmarkWidth}
         height={size}
-        viewBox="0 0 450 100"
+        viewBox="0 0 230 100"
         xmlns="http://www.w3.org/2000/svg"
         role="img"
-        aria-label="DocuAI"
+        aria-label="글집(GuelZip)"
       >
+        {/* 한글 워드마크 — Inter는 한글 미지원이라 한글 폰트 스택 우선 */}
         <text
           x="0"
-          y="97"
-          fontFamily="Inter, system-ui, sans-serif"
+          y="88"
+          fontFamily="Pretendard, 'Noto Sans KR', 'Malgun Gothic', system-ui, sans-serif"
           fontWeight="800"
-          fontSize="110"
-          letterSpacing="-4"
+          fontSize="94"
+          letterSpacing="0"
         >
-          <tspan fill="#0F1A3D">Docu</tspan>
-          <tspan fill="#1B7FA8">AI</tspan>
+          <tspan fill="#0F1A3D">글</tspan>
+          <tspan fill="#1B7FA8">집</tspan>
         </text>
       </svg>
     </div>

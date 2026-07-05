@@ -4,7 +4,7 @@ import { XCircle, ArrowLeft } from "lucide-react";
 import { LogoLockup } from "@/components/Logo";
 
 export const metadata = {
-  title: "결제 취소 — DocuAI",
+  title: "결제 취소 — 글집",
 };
 
 export default function BillingCancelPage() {

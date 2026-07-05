@@ -27,7 +27,7 @@ const CONFIGS = {
     label: "Cursor / Windsurf",
     filename: ".cursor/mcp.json",
     code: JSON.stringify(
-      { servers: [{ name: "DocuAI", url: `${API}/api/v1/mcp/spec` }] },
+      { servers: [{ name: "글집", url: `${API}/api/v1/mcp/spec` }] },
       null,
       2
     ),
@@ -53,7 +53,7 @@ export default function McpPage() {
     <div className="mx-auto max-w-2xl px-4 py-10">
       <h1 className="mb-2 text-2xl font-bold">MCP 서버 등록</h1>
       <p className="mb-8 text-sm text-neutral-500">
-        AI 에이전트(Claude, Cursor 등)에서 DocuAI의 문서 변환 기능을 직접 호출할 수 있습니다.
+        AI 에이전트(Claude, Cursor 등)에서 글집의 문서 변환 기능을 직접 호출할 수 있습니다.
       </p>
       {Object.entries(CONFIGS).map(([key, cfg]) => (
         <div key={key} className="mb-6 rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">

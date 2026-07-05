@@ -43,7 +43,7 @@ export default function PricingPage() {
       return;
     }
     if (plan.id === "enterprise") {
-      window.location.href = "mailto:sales@tenai.kr?subject=DocuAI%20Enterprise%20문의";
+      window.location.href = "mailto:sales@tenai.kr?subject=글집%20Enterprise%20문의";
       return;
     }
     if (plan.id === "free") return;
@@ -75,7 +75,7 @@ export default function PricingPage() {
       </Link>
 
       <header className="mt-8 text-center">
-        <h1 className="text-3xl font-bold">DocuAI 요금제</h1>
+        <h1 className="text-3xl font-bold">글집 요금제</h1>
         <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
           마크다운 한 번에 회사 문서로 — 필요한 만큼만 결제하세요.
         </p>

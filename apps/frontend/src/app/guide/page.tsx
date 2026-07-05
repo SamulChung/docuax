@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "기능 가이드 — DocuAI × 농축협 DT",
+  title: "기능 가이드 — 글집 × 농축협 DT",
   description: "역관목조분·요정분생설·G16 톤변환·채널 내보내기 등 7가지 신규 기능 확인 방법",
 };
 
@@ -168,7 +168,7 @@ export default function GuidePage() {
         <div className="mx-auto max-w-4xl px-6 py-5">
           <div className="flex items-center gap-3">
             <Link href="/" className="text-sm text-neutral-500 hover:text-brand dark:text-neutral-400">
-              ← DocuAI
+              ← 글집
             </Link>
             <span className="text-neutral-300 dark:text-neutral-700">/</span>
             <span className="text-sm font-medium">기능 가이드</span>
@@ -183,7 +183,7 @@ export default function GuidePage() {
               </span>
             </div>
             <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
-              DocuAI 신규 기능 7가지 확인 가이드
+              글집 신규 기능 7가지 확인 가이드
             </h1>
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
               역관목조분·요정분생설 기반 AI 문서 작성 도구 — 기능별 위치·사용법 안내
@@ -354,10 +354,10 @@ export default function GuidePage() {
 
         {/* 푸터 */}
         <div className="pt-4 text-center text-xs text-neutral-400 dark:text-neutral-600">
-          DocuAI × 농축협 DT 프로젝트과정 연계 가이드 · (주)TenAI · 정원훈 박사
+          글집 × 농축협 DT 프로젝트과정 연계 가이드 · (주)TenAI · 정원훈 박사
           <br />
           <Link href="/" className="mt-1 inline-block hover:text-brand hover:underline">
-            ← DocuAI 메인으로 돌아가기
+            ← 글집 메인으로 돌아가기
           </Link>
         </div>
       </div>

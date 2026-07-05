@@ -3,7 +3,7 @@ import Link from "next/link";
 import { LogoLockup } from "@/components/Logo";
 
 export const metadata = {
-  title: "개인정보처리방침 — DocuAI",
+  title: "개인정보처리방침 — 글집",
 };
 
 export default function PrivacyPage() {
@@ -16,7 +16,7 @@ export default function PrivacyPage() {
         <LogoLockup size={20} />
       </Link>
 
-      <h1 className="mt-6 text-2xl font-bold">DocuAI 개인정보처리방침</h1>
+      <h1 className="mt-6 text-2xl font-bold">글집 개인정보처리방침</h1>
       <p className="mt-1 text-xs text-neutral-500">최종 개정일: 2026년 5월 18일 · 시행일: 2026년 7월 1일</p>
 
       <div className="mt-4 rounded border border-neutral-200 bg-neutral-50 p-3 text-xs dark:border-neutral-800 dark:bg-neutral-900">
@@ -29,7 +29,7 @@ export default function PrivacyPage() {
           <li>본사 주소: 서울특별시 서초구 효령로 335, 202호 (서초동, 대호프레조빌)</li>
           <li>대표전화: <a href="tel:+82-2-588-9881" className="font-mono text-brand hover:underline">02-588-9881</a></li>
           <li>회사 웹사이트: <a href="https://www.tenai.kr" target="_blank" rel="noopener" className="text-brand hover:underline">www.tenai.kr</a></li>
-          <li>서비스: DocuAI (<a href="https://www.docuax.com" target="_blank" rel="noopener" className="text-brand hover:underline">www.docuax.com</a>)</li>
+          <li>서비스: 글집 (<a href="https://www.docuax.com" target="_blank" rel="noopener" className="text-brand hover:underline">www.docuax.com</a>)</li>
         </ul>
       </div>
 
