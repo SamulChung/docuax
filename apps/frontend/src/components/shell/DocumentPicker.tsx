@@ -22,19 +22,29 @@ export function DocumentPicker({ onClose }: { onClose: () => void }) {
   const open = async (id: string) => {
     const s = useWorkspace.getState();
     if (s.dirty && s.source.trim() && !confirm("저장하지 않은 변경이 있습니다. 계속할까요?")) return;
-    const doc = await getDocument(id);
-    s.setSource(doc.source_md);
-    s.setTitle(doc.title);
-    s.setCurrentDocId(doc.id);
-    s.setDirty(false);
-    s.setSaveState({ kind: "saved", at: Date.now() });
-    onClose();
+    try {
+      const doc = await getDocument(id);
+      s.setSource(doc.source_md);
+      s.setTitle(doc.title);
+      s.setCurrentDocId(doc.id);
+      s.setDirty(false);
+      s.setSaveState({ kind: "saved", at: Date.now() });
+      onClose();
+    } catch {
+      // stale 목록에서 이미 삭제된 문서 등 — 모달은 닫지 않고 목록만 동기화
+      setError("문서를 여는 데 실패했습니다. 목록을 새로고침합니다.");
+      load();
+    }
   };
 
   const remove = async (id: string) => {
     if (!confirm("이 문서를 삭제할까요? 되돌릴 수 없습니다.")) return;
-    await deleteDocument(id);
-    if (useWorkspace.getState().currentDocId === id) useWorkspace.getState().setCurrentDocId(null);
+    try {
+      await deleteDocument(id);
+      if (useWorkspace.getState().currentDocId === id) useWorkspace.getState().setCurrentDocId(null);
+    } catch {
+      setError("삭제에 실패했습니다.");
+    }
     load();
   };
 
