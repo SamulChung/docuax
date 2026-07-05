@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
+import useSWR from "swr";
 
 import { listMacros, executeMacro } from "@/lib/api";
 import { filterCommands, getStaticCommands } from "@/lib/commands";
@@ -11,31 +12,31 @@ import { useWorkspace } from "@/store/workspace";
 export function CommandPalette({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
-  const [macroCmds, setMacroCmds] = useState<Command[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const preview = useWorkspace((s) => s.preview);
 
-  // 매크로 101종 lazy 병합 — 변환 결과가 있어야 실행 가능
-  useEffect(() => {
-    listMacros()
-      .then((macros) =>
-        setMacroCmds(
-          macros.map((m) => ({
-            id: `macro.${m.id}`,
-            label: `${m.id} — ${m.name}`,
-            keywords: `macro 매크로 ${m.description ?? ""}`,
-            run: () => {
-              const s = useWorkspace.getState();
-              if (!s.preview) { alert("먼저 변환(Ctrl+Enter)을 실행하세요"); return; }
-              void executeMacro({ document_id: s.preview.document_id, macro_id: m.id })
-                .then((r) => s.setPreview(r.preview))
-                .catch(() => alert("매크로 실행에 실패했습니다"));
-            },
-          })),
-        ),
-      )
-      .catch(() => {});
-  }, []);
+  // 매크로 101종 lazy 병합 — RemoteControl 과 동일 캐시 키("macros")로 fetch 공유.
+  // 실패해도 정적 명령은 그대로 동작하며, 결과 목록 하단에 실패 안내 행을 표시한다.
+  const { data: macros, error: macrosError } = useSWR("macros", () => listMacros(), {
+    revalidateOnFocus: false,
+  });
+
+  const macroCmds = useMemo<Command[]>(
+    () =>
+      (macros ?? []).map((m) => ({
+        id: `macro.${m.id}`,
+        label: `${m.id} — ${m.name}`,
+        keywords: `macro 매크로 ${m.description ?? ""}`,
+        run: () => {
+          const s = useWorkspace.getState();
+          if (!s.preview) { alert("먼저 변환(Ctrl+Enter)을 실행하세요"); return; }
+          void executeMacro({ document_id: s.preview.document_id, macro_id: m.id })
+            .then((r) => s.setPreview(r.preview))
+            .catch(() => alert("매크로 실행에 실패했습니다"));
+        },
+      })),
+    [macros],
+  );
 
   const all = useMemo(() => [...getStaticCommands(), ...macroCmds], [macroCmds]);
   const results = useMemo(() => filterCommands(all, query).slice(0, 12), [all, query]);
@@ -83,6 +84,11 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
               {c.label}
             </button>
           ))}
+          {macrosError && (
+            <p className="px-4 py-1.5 text-xs text-neutral-400 opacity-70">
+              매크로 목록을 불러오지 못했습니다
+            </p>
+          )}
         </div>
         <div className="border-t border-neutral-100 px-3 py-1.5 text-[10px] text-neutral-400 dark:border-neutral-800">
           ↑↓ 이동 · Enter 실행 · Esc 닫기
