@@ -211,11 +211,12 @@ def test_registry_returns_hwp_renderer():
 
 
 # ── 5. pyhwp 독립 파서 왕복 (설치 시) ─────────────────────────────────
-
-hwp5 = pytest.importorskip("hwp5", reason="pyhwp 미설치 — 독립 파서 검증 생략")
+# importorskip은 각 테스트 안에서만 — 모듈 수준이면 pyhwp 미설치 시
+# 이 파일의 다른 테스트까지 전부 건너뛰게 된다.
 
 
 def test_pyhwp_parses_generated_file(tmp_path):
+    pytest.importorskip("hwp5", reason="pyhwp 미설치 — 독립 파서 검증 생략")
     from hwp5.binmodel import Hwp5File
 
     ir = _ir([
@@ -259,6 +260,7 @@ def test_pyhwp_xml_transform_roundtrip(tmp_path):
     """xmlmodel 변환은 컨트롤 문자 스캔·레코드 트리 전체를 검증한다."""
     import io
 
+    pytest.importorskip("hwp5", reason="pyhwp 미설치 — 독립 파서 검증 생략")
     from hwp5.xmlmodel import Hwp5File
 
     ir = _ir([
@@ -278,3 +280,52 @@ def test_pyhwp_xml_transform_roundtrip(tmp_path):
         doc.close()
     assert "변환기왕복검증문장" in xml
     assert "셀에이" in xml and "셀비" in xml
+
+
+# ── 6. 다운로드 API — 강등 경고 헤더 (설계문서 §3.5) ──────────────────
+
+
+async def test_render_download_exposes_degrade_warnings_header():
+    import json
+    import os
+    import urllib.parse
+
+    from httpx import ASGITransport, AsyncClient
+
+    os.environ.setdefault("LLM_PROVIDER", "mock")
+    from app.main import create_app
+    from app.services.document_cache import get_document_cache
+
+    cache = get_document_cache()
+    degraded_ir = DocumentIR(
+        document_id="doc-hwp-warn-test",
+        title="경고헤더검증",
+        blocks=[
+            Block(id="blk-0001", type=BlockType.PARAGRAPH, runs=[InlineRun(text="본문")]),
+            Block(id="blk-0002", type=BlockType.EQUATION,
+                  equation=EquationData(latex="E=mc^2")),
+        ],
+    )
+    clean_ir = DocumentIR(
+        document_id="doc-hwp-clean-test",
+        title="경고없음검증",
+        blocks=[Block(id="blk-0001", type=BlockType.PARAGRAPH, runs=[InlineRun(text="본문")])],
+    )
+    cache.set(degraded_ir)
+    cache.set(clean_ir)
+
+    app = create_app()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with app.router.lifespan_context(app):
+            r = await client.get("/api/v1/render/doc-hwp-warn-test/hwp")
+            assert r.status_code == 200
+            raw = r.headers.get("x-docuax-warnings")
+            assert raw, "강등 발생 시 X-Docuax-Warnings 헤더가 있어야 함"
+            warnings = json.loads(urllib.parse.unquote(raw))
+            assert isinstance(warnings, list) and warnings
+            assert any("수식" in w for w in warnings)
+
+            r2 = await client.get("/api/v1/render/doc-hwp-clean-test/hwp")
+            assert r2.status_code == 200
+            assert "x-docuax-warnings" not in r2.headers

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
+import json
+import urllib.parse
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
@@ -102,8 +103,19 @@ async def render_download(document_id: str, fmt: str) -> FileResponse:
     except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=f"render failed: {e}") from e
 
+    # 강등 경고 노출 (설계문서 §3.5) — UI가 "HWPX 사용 권장" 안내를 띄우는 데이터 소스.
+    # 헤더는 latin-1만 허용되므로 JSON → URL 인코딩. 프론트는
+    # JSON.parse(decodeURIComponent(header))로 복원.
+    headers: dict[str, str] = {}
+    warnings = getattr(renderer, "warnings", None)
+    if warnings:
+        headers["X-Docuax-Warnings"] = urllib.parse.quote(
+            json.dumps(warnings, ensure_ascii=False)
+        )
+
     return FileResponse(
         path=str(rendered),
         media_type=renderer.mime,
         filename=rendered.name,
+        headers=headers or None,
     )
