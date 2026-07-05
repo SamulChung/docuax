@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { FileUp, Loader2 } from "lucide-react";
 import { useWorkspace } from "@/store/workspace";
+import { docxFileToMarkdown } from "@/lib/docxImport";
 
 export function HwpDropZone() {
   const setSource = useWorkspace((s) => s.setSource);
@@ -16,13 +17,19 @@ export function HwpDropZone() {
     setError(null);
     setLoading(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/parse-hwp", { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "파싱 실패");
-      setSource(data.markdown ?? "");
-      if (data.title && setTitle) setTitle(data.title);
+      const isDocx = /\.docx$/i.test(file.name);
+      if (isDocx) {
+        const md = await docxFileToMarkdown(file);
+        setSource(md);
+      } else {
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch("/api/parse-hwp", { method: "POST", body: fd });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "파싱 실패");
+        setSource(data.markdown ?? "");
+        if (data.title && setTitle) setTitle(data.title);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "파일 처리 중 오류가 발생했습니다");
     } finally {
@@ -54,12 +61,12 @@ export function HwpDropZone() {
           : "border-neutral-300 text-neutral-500 hover:border-brand hover:text-brand dark:border-neutral-700"
       }`}
       onClick={() => inputRef.current?.click()}
-      title="HWP/HWPX 파일을 드래그하거나 클릭해서 열기"
+      title="HWP/HWPX/DOCX 파일을 드래그하거나 클릭해서 열기"
     >
       <input
         ref={inputRef}
         type="file"
-        accept=".hwp,.hwpx"
+        accept=".hwp,.hwpx,.docx"
         className="hidden"
         onChange={handleChange}
       />
@@ -71,7 +78,7 @@ export function HwpDropZone() {
       ) : (
         <>
           <FileUp size={12} />
-          <span>HWP 열기</span>
+          <span>HWP·DOCX 열기</span>
         </>
       )}
       {error && (
