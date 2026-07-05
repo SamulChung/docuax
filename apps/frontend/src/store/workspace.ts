@@ -240,6 +240,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
   setPaletteOpen: (v) => set({ paletteOpen: v }),
 
   resetWorkspace: () => {
+    // outlineOpen·paletteOpen은 뷰 선호라 의도적으로 유지
     cancelPendingDraft();
     clearDraft();
     set({
@@ -283,7 +284,9 @@ if (typeof window !== "undefined") {
         title: useWorkspace.getState().title,
         docId: useWorkspace.getState().currentDocId,
       });
-      if (useWorkspace.getState().source.trim()) {
+      // dirty(마지막 서버 저장 이후 변경)일 때만 "임시 저장됨"으로 격하 —
+      // 무변경 상태(예: 방금 서버 문서를 연 직후)까지 "저장됨"→"임시 저장됨"으로 되돌리지 않도록.
+      if (useWorkspace.getState().source.trim() && useWorkspace.getState().dirty) {
         useWorkspace.getState().setSaveState({ kind: "draft", at: Date.now() });
       }
     }, 1000);

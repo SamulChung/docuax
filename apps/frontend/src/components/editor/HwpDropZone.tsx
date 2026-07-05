@@ -37,6 +37,8 @@ export function HwpDropZone() {
         setSource(data.markdown ?? "");
         if (data.title && titleEmpty) setTitle(data.title);
       }
+      // 가져온 파일은 새 문서 — 열려 있던 서버 문서를 덮어쓰지 않도록 연결 해제
+      useWorkspace.getState().setCurrentDocId(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "파일 처리 중 오류가 발생했습니다");
     } finally {

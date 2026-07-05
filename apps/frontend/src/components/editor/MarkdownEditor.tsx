@@ -63,7 +63,12 @@ export function MarkdownEditor({ placeholderText }: { placeholderText?: string }
           theme,
           EditorView.lineWrapping,
           EditorView.updateListener.of((u) => {
-            if (u.docChanged) setSource(u.state.doc.toString());
+            if (u.docChanged) {
+              const text = u.state.doc.toString();
+              // 외부(store→doc) 동기화 왕복이 dirty를 되살리지 않도록 동일 문자열이면 생략
+              // (store sync effect가 dispatch한 doc이 다시 여기로 돌아오는 echo).
+              if (text !== useWorkspace.getState().source) setSource(text);
+            }
             // 커서 이동·선택 변경도 구독자(표→차트 감지 등)에게 알림
             if (u.selectionSet || u.docChanged) notifySelectionChange(u.state.selection.main.head);
           }),

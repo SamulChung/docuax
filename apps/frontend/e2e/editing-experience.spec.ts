@@ -51,7 +51,7 @@ test("편집 경험 — 복구·저장·열기·찾기·팔레트·목차", asyn
   const pickerHeading = page.getByRole("heading", { name: "문서 열기" });
   await expect(pickerHeading).toBeVisible();
   await expect(page.getByText("E2E문서", { exact: true })).toBeVisible();
-  // DocumentPicker 는 Esc 핸들러가 없음 — X(aria-label="닫기") 버튼으로 닫는다.
+  // DocumentPicker 는 Esc 핸들러가 있지만, 여기서는 X(aria-label="닫기") 버튼으로 닫는다.
   // VerifyBanner(미인증 배너)에도 "닫기" 버튼이 있으므로 모달 헤더로 스코프 한정.
   await pickerHeading.locator("xpath=..").getByRole("button", { name: "닫기" }).click();
   await expect(pickerHeading).toBeHidden();
