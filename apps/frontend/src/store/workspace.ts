@@ -66,6 +66,14 @@ interface WorkspaceState {
 
   /** 첫화면으로 — 에디터·변환결과·선택 모두 초기화. 채팅 대화는 별도 store 라 유지됨. */
   resetWorkspace: () => void;
+
+  /** v3 셸 — 문서/슬라이드 탭 */
+  activeTab: "doc" | "slides";
+  setActiveTab: (t: "doc" | "slides") => void;
+
+  /** A4 미리보기 추정 쪽수 (상태바 표시용) */
+  pageCount: number;
+  setPageCount: (n: number) => void;
 }
 
 // 첫 진입 시 에디터는 빈 상태로 — Editor.tsx 의 안내 카드가 표시되며
@@ -189,6 +197,12 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
     try { localStorage.setItem("docuax_auto_convert", String(v)); } catch {}
   },
 
+  activeTab: "doc",
+  setActiveTab: (t) => set({ activeTab: t }),
+
+  pageCount: 0,
+  setPageCount: (n) => set({ pageCount: n }),
+
   resetWorkspace: () =>
     set({
       source: DEFAULT_SOURCE,        // ""
@@ -199,5 +213,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
       recentlyChangedIds: [],
       jumpIndex: { red: 0, blue: 0, yellow: 0 },
       jumpTarget: null,
+      activeTab: "doc",
+      pageCount: 0,
     }),
 }));
