@@ -7,7 +7,8 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirro
 import { markdown } from "@codemirror/lang-markdown";
 import { syntaxHighlighting, defaultHighlightStyle } from "@codemirror/language";
 
-import { notifySelectionChange, registerEditorView, wrapSelection } from "@/lib/editorCommands";
+import { notifySelectionChange, registerEditorView, unregisterEditorView, wrapSelection } from "@/lib/editorCommands";
+import { sanitizeString } from "@/lib/sanitize";
 import { useWorkspace } from "@/store/workspace";
 
 const formatKeymap = keymap.of([
@@ -57,7 +58,9 @@ export function MarkdownEditor({ placeholderText }: { placeholderText?: string }
     viewRef.current = view;
     registerEditorView(view);
     return () => {
-      registerEditorView(null);
+      // compare-and-clear — 다른 인스턴스가 이미 등록을 교체했다면 건드리지 않는다
+      // (StrictMode 재마운트·중복 마운트 시 살아있는 에디터의 등록 clobber 방지).
+      unregisterEditorView(view);
       view.destroy();
       viewRef.current = null;
     };
@@ -66,11 +69,15 @@ export function MarkdownEditor({ placeholderText }: { placeholderText?: string }
 
   // 외부(템플릿·AI 채팅·HWP 가져오기)에서 source가 바뀐 경우 에디터에 반영.
   // 에디터 자신의 입력으로 인한 갱신은 doc 비교로 걸러진다.
+  // 주의: setSource 는 저장 시 sanitize(lone surrogate·제어문자 제거)하므로,
+  // 깨진 유니코드가 섞인 paste 직후에는 doc ≠ source 가 되어 자기 입력이
+  // 외부 변경으로 오인될 수 있다 — 그 경우 전체 교체(커서 점프·undo 오염)가
+  // 일어나지 않도록 sanitize 결과 기준으로 비교한다.
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
     const current = view.state.doc.toString();
-    if (current !== source) {
+    if (current !== source && sanitizeString(current) !== source) {
       view.dispatch({
         changes: { from: 0, to: current.length, insert: source },
       });

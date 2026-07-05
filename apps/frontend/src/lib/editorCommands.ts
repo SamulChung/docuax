@@ -9,6 +9,16 @@ export function registerEditorView(v: EditorView | null): void {
   view = v;
 }
 
+/**
+ * 등록 해제 — 자기 자신이 등록된 경우에만 해제 (compare-and-clear).
+ * 에디터 인스턴스가 교체될 때(StrictMode 재마운트·탭 전환 등) 옛 인스턴스의
+ * unmount cleanup 이 살아있는 새 인스턴스의 등록을 지우는 clobber 를 방지한다.
+ */
+export function unregisterEditorView(v: EditorView): void {
+  if (view === v) view = null;
+}
+
+/** 등록된 EditorView 원본 접근 — MenuBar(Task 3)의 undo/redo 등에서 사용 예정. */
 export function getEditorView(): EditorView | null {
   return view;
 }

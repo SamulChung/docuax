@@ -9,6 +9,8 @@ import {
   getCursorOffset,
   onSelectionChange,
   notifySelectionChange,
+  getEditorView,
+  unregisterEditorView,
 } from "@/lib/editorCommands";
 
 function makeView(doc: string, anchor: number, head?: number) {
@@ -92,5 +94,14 @@ describe("editorCommands", () => {
     unsubscribe();
     notifySelectionChange(2);
     expect(received).toEqual([1]);
+  });
+
+  it("unregisterEditorView — 다른 view 가 등록돼 있으면 해제하지 않는다 (clobber 방지)", () => {
+    const a = makeView("a", 0);
+    const b = makeView("b", 0); // b 가 나중에 등록 — 현재 활성 view
+    unregisterEditorView(a); // 이미 교체된 옛 인스턴스의 unmount — no-op 이어야 함
+    expect(getEditorView()).toBe(b);
+    unregisterEditorView(b); // 자기 자신이 등록된 상태의 unmount — 해제됨
+    expect(getEditorView()).toBeNull();
   });
 });

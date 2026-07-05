@@ -440,12 +440,8 @@ const CHART_TEMPLATES: ChartTemplate[] = [
  *   1. 표지/차트/다이어그램/수식 — 미리 정의된 마크다운 템플릿을 본문 끝에 삽입.
  *   2. 이미지 — 파일 선택 → POST /uploads/image → 응답의 markdown 삽입.
  */
-/**
- * @param textareaRef  Editor 의 textarea ref — 커서 위치에 정확히 삽입하기 위해 필요.
- *                     없으면 본문 끝에 append (fallback).
- * @param onInsert     v3: CodeMirror 등 외부 에디터로의 삽입 함수. 지정 시 textareaRef보다 우선.
- */
 interface InsertVisualBarProps {
+  /** Editor 의 textarea ref — 커서 위치에 정확히 삽입하기 위해 필요. 없으면 본문 끝에 append (fallback). */
   textareaRef?: React.RefObject<HTMLTextAreaElement>;
   /** v3: CodeMirror 등 외부 에디터로의 삽입 함수. 지정 시 textareaRef보다 우선. */
   onInsert?: (snippet: string) => void;
