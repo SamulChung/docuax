@@ -18,6 +18,20 @@ export function getCursorOffset(): number | null {
   return view ? view.state.selection.main.head : null;
 }
 
+type SelectionListener = (offset: number) => void;
+const selectionListeners = new Set<SelectionListener>();
+
+/** 커서/선택 변경 구독 — 해제 함수를 반환. */
+export function onSelectionChange(fn: SelectionListener): () => void {
+  selectionListeners.add(fn);
+  return () => selectionListeners.delete(fn);
+}
+
+/** MarkdownEditor의 updateListener가 selection 변경 시 호출. */
+export function notifySelectionChange(offset: number): void {
+  selectionListeners.forEach((fn) => fn(offset));
+}
+
 /** 선택 영역을 before/after 마커로 감싼다. 선택이 없으면 마커만 삽입 후 커서를 가운데 둔다. */
 export function wrapSelection(before: string, after: string = before): void {
   if (!view) return;

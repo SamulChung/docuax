@@ -7,6 +7,8 @@ import {
   insertBlock,
   setHeadingLevel,
   getCursorOffset,
+  onSelectionChange,
+  notifySelectionChange,
 } from "@/lib/editorCommands";
 
 function makeView(doc: string, anchor: number, head?: number) {
@@ -73,5 +75,22 @@ describe("editorCommands", () => {
   it("getCursorOffset — view 미등록 시 null", () => {
     registerEditorView(null);
     expect(getCursorOffset()).toBeNull();
+  });
+
+  it("onSelectionChange — notifySelectionChange 호출 시 offset 을 전달받는다", () => {
+    const received: number[] = [];
+    const unsubscribe = onSelectionChange((offset) => received.push(offset));
+    notifySelectionChange(42);
+    expect(received).toEqual([42]);
+    unsubscribe();
+  });
+
+  it("onSelectionChange — 해제 후에는 더 이상 호출되지 않는다", () => {
+    const received: number[] = [];
+    const unsubscribe = onSelectionChange((offset) => received.push(offset));
+    notifySelectionChange(1);
+    unsubscribe();
+    notifySelectionChange(2);
+    expect(received).toEqual([1]);
   });
 });

@@ -7,7 +7,7 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirro
 import { markdown } from "@codemirror/lang-markdown";
 import { syntaxHighlighting, defaultHighlightStyle } from "@codemirror/language";
 
-import { registerEditorView, wrapSelection } from "@/lib/editorCommands";
+import { notifySelectionChange, registerEditorView, wrapSelection } from "@/lib/editorCommands";
 import { useWorkspace } from "@/store/workspace";
 
 const formatKeymap = keymap.of([
@@ -48,6 +48,8 @@ export function MarkdownEditor({ placeholderText }: { placeholderText?: string }
           EditorView.lineWrapping,
           EditorView.updateListener.of((u) => {
             if (u.docChanged) setSource(u.state.doc.toString());
+            // 커서 이동·선택 변경도 구독자(표→차트 감지 등)에게 알림
+            if (u.selectionSet || u.docChanged) notifySelectionChange(u.state.selection.main.head);
           }),
         ],
       }),
