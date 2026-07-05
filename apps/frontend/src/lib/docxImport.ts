@@ -28,7 +28,8 @@ export function htmlToMarkdown(html: string): string {
 /** .docx File → 마크다운. 실패 시 Error throw (호출부가 UI 안내). */
 export async function docxFileToMarkdown(file: File): Promise<string> {
   const mammoth = await import("mammoth/mammoth.browser");
-  const { value: html } = await mammoth.convertToHtml({ arrayBuffer: await file.arrayBuffer() });
+  const { value: html, messages } = await mammoth.convertToHtml({ arrayBuffer: await file.arrayBuffer() });
+  if (messages?.length) console.warn("[docxImport] mammoth 변환 경고:", messages);
   const md = htmlToMarkdown(html);
   if (!md.trim()) throw new Error("빈 문서이거나 변환할 내용이 없습니다");
   return md;

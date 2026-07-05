@@ -17,10 +17,17 @@ export function HwpDropZone() {
     setError(null);
     setLoading(true);
     try {
+      // 사용자가 이미 제목을 입력했다면 가져오기가 덮어쓰지 않음 (HWP·DOCX 공통).
+      const titleEmpty = !useWorkspace.getState().title.trim();
       const isDocx = /\.docx$/i.test(file.name);
       if (isDocx) {
         const md = await docxFileToMarkdown(file);
         setSource(md);
+        if (titleEmpty) {
+          // 첫 H1을 제목으로, 없으면 파일명(확장자 제거)으로 파생.
+          const h1 = md.match(/^#\s+(.+)$/m);
+          setTitle(h1 ? h1[1].trim() : file.name.replace(/\.docx$/i, ""));
+        }
       } else {
         const fd = new FormData();
         fd.append("file", file);
@@ -28,7 +35,7 @@ export function HwpDropZone() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "파싱 실패");
         setSource(data.markdown ?? "");
-        if (data.title && setTitle) setTitle(data.title);
+        if (data.title && titleEmpty) setTitle(data.title);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "파일 처리 중 오류가 발생했습니다");
