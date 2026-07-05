@@ -9,7 +9,7 @@ import { ExternalLink } from "lucide-react";
  */
 export function Footer() {
   return (
-    <footer className="border-t border-neutral-200 bg-neutral-50 px-6 py-8 dark:border-neutral-800 dark:bg-neutral-950">
+    <footer className="no-print border-t border-neutral-200 bg-neutral-50 px-6 py-8 dark:border-neutral-800 dark:bg-neutral-950">
       <div className="mx-auto max-w-6xl">
         <div className="grid gap-8 md:grid-cols-4">
           {/* 제품 */}

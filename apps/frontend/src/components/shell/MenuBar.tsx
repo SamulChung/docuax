@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { undo, redo } from "@codemirror/commands";
+import { openSearchPanel } from "@codemirror/search";
 
 import { getEditorView, insertBlock, setHeadingLevel, wrapSelection } from "@/lib/editorCommands";
 import { saveAsNewDocument, saveCurrentDocument } from "@/lib/docActions";
@@ -51,6 +52,9 @@ export function MenuBar() {
     편집: [
       { label: "실행 취소 (Ctrl+Z)", action: withEditor((v) => undo(v)) },
       { label: "다시 실행 (Ctrl+Y)", action: withEditor((v) => redo(v)) },
+      "divider",
+      { label: "찾기 (Ctrl+F)", action: withEditor((v) => openSearchPanel(v)) },
+      { label: "바꾸기 (Ctrl+H)", action: withEditor((v) => openSearchPanel(v)) },
     ],
     서식: [
       { label: "제목 1", action: () => setHeadingLevel(1) },
@@ -74,7 +78,7 @@ export function MenuBar() {
   };
 
   return (
-    <div ref={ref} className="flex items-center gap-0.5 border-b border-neutral-200 bg-neutral-50 px-2 py-0.5 dark:border-neutral-800 dark:bg-neutral-950">
+    <div ref={ref} className="no-print flex items-center gap-0.5 border-b border-neutral-200 bg-neutral-50 px-2 py-0.5 dark:border-neutral-800 dark:bg-neutral-950">
       {Object.entries(MENUS).map(([name, items]) => (
         <div key={name} className="relative">
           <button

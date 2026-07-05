@@ -13,7 +13,7 @@ export function DocumentTabs() {
   const setActiveTab = useWorkspace((s) => s.setActiveTab);
 
   return (
-    <div className="flex items-end gap-1 border-b border-neutral-200 px-3 pt-1 dark:border-neutral-800">
+    <div className="no-print flex items-end gap-1 border-b border-neutral-200 px-3 pt-1 dark:border-neutral-800">
       {TABS.map(({ id, label, Icon }) => (
         <button
           key={id}

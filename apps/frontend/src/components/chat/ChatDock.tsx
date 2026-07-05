@@ -79,7 +79,7 @@ export function ChatDock() {
   };
 
   return (
-    <div className="flex flex-col border-t border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="no-print flex flex-col border-t border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900">
       {/* 헤더 — provider 탭 + 확대·정리 액션. 좁은 폭에서 깨지지 않도록 모든 라벨 whitespace-nowrap. */}
       <div className="flex items-center justify-between gap-2 px-2.5 py-1.5">
         {/* 좌측 — 라벨·배지: 줄바꿈 절대 금지 */}

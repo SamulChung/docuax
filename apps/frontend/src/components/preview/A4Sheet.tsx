@@ -29,16 +29,16 @@ export function A4Sheet({ children }: { children: React.ReactNode }) {
   }, [setPageCount]);
 
   return (
-    <div className="flex justify-center bg-neutral-100 py-6 dark:bg-neutral-950">
+    <div className="print-root flex justify-center bg-neutral-100 py-6 dark:bg-neutral-950">
       {/* 용지는 항상 흰색 — .preview 텍스트 색(text-neutral-900)이 라이트 전용이므로
           다크 모드에서도 dark: 배경 변형을 두지 않음 (Word/한글의 다크 UI와 동일한 방식) */}
       <div
-        className="relative max-w-full bg-white shadow-md"
+        className="print-sheet relative max-w-full bg-white shadow-md"
         style={{ width: PAGE_WIDTH }}
       >
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 z-10"
+          className="page-guide pointer-events-none absolute inset-0 z-10"
           style={{ backgroundImage: PAGE_GUIDE_GRADIENT }}
         />
         <div ref={innerRef} style={{ padding: PAGE_MARGIN }}>

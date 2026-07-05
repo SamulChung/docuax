@@ -140,7 +140,7 @@ export function ChatPanel() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex" onClick={() => setExpanded(false)}>
+    <div className="no-print fixed inset-0 z-50 flex" onClick={() => setExpanded(false)}>
       <div className="flex-1 bg-black/40" />
       <aside
         onClick={(e) => e.stopPropagation()}

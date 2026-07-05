@@ -69,3 +69,13 @@ body {
 .preview table.dashed td, .preview table.dashed th { @apply border border-dashed border-neutral-400 p-1.5; }
 .preview table.grid td, .preview table.grid th { @apply border border-neutral-300 p-1.5; }
 .preview table th { @apply bg-neutral-100 dark:bg-neutral-800 font-semibold; }
+
+/* ── 인쇄 — A4 미리보기 내용만 종이에 ───────────────────────────── */
+@media print {
+  .no-print { display: none !important; }
+  /* 미리보기 영역만 남기고 전체 폭·스크롤 해제 */
+  .print-root { display: block !important; height: auto !important; overflow: visible !important; }
+  .print-sheet { width: 100% !important; max-width: none !important; box-shadow: none !important; }
+  .page-guide { display: none !important; }
+  .preview table, .preview img, .preview figure { break-inside: avoid; }
+}

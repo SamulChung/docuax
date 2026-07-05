@@ -1186,8 +1186,8 @@ export function PreviewPane() {
   };
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-y-1 border-b border-neutral-200 px-4 py-2 dark:border-neutral-800">
+    <div className="flex flex-1 flex-col overflow-hidden print-root">
+      <div className="no-print flex flex-wrap items-center justify-between gap-y-1 border-b border-neutral-200 px-4 py-2 dark:border-neutral-800">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span
             className="shrink-0 whitespace-nowrap text-sm font-semibold"
@@ -1323,11 +1323,11 @@ export function PreviewPane() {
         </div>
       </div>
 
-      <div className="preview flex-1 overflow-auto text-[14px]">
+      <div className="preview flex-1 overflow-auto text-[14px] print-root">
         {showDiff && prevSource ? (
           <DiffView oldText={prevSource} newText={source} />
         ) : (
-        <div className="h-full overflow-auto">
+        <div className="h-full overflow-auto print-root">
         {busy && <ConvertProgress />}
         {!preview && !busy && (
           <div className="flex h-full items-center justify-center text-center text-sm text-neutral-400">

@@ -49,7 +49,7 @@ export function Workspace() {
   }, []);
 
   return (
-    <div className="flex h-[calc(100vh-300px)] min-h-[640px] flex-col">
+    <div className="flex h-[calc(100vh-300px)] min-h-[640px] flex-col print-root">
       <TopBar />
       <MenuBar />
       <DocumentTabs />
@@ -58,17 +58,17 @@ export function Workspace() {
           <SlideWorkspace />
         </div>
       ) : (
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden print-root">
           <RibbonToolbar />
-          <div className="grid flex-1 grid-cols-12 gap-3 overflow-hidden p-3">
-            <section className="col-span-4 flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+          <div className="grid flex-1 grid-cols-12 gap-3 overflow-hidden p-3 print-root">
+            <section className="no-print col-span-4 flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
               <Editor />
             </section>
-            <section className="col-span-5 flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+            <section className="col-span-5 flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900 print-root">
               <PreviewPane />
             </section>
             <section
-              className={`flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900 ${
+              className={`no-print flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900 ${
                 remoteCollapsed ? "col-span-1" : "col-span-3"
               }`}
             >

@@ -6,6 +6,7 @@ import { EditorView, keymap, lineNumbers, highlightActiveLine, placeholder } fro
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { syntaxHighlighting, defaultHighlightStyle } from "@codemirror/language";
+import { search, searchKeymap, openSearchPanel } from "@codemirror/search";
 
 import { saveCurrentDocument } from "@/lib/docActions";
 import { notifySelectionChange, registerEditorView, unregisterEditorView, wrapSelection } from "@/lib/editorCommands";
@@ -17,6 +18,7 @@ const formatKeymap = keymap.of([
   { key: "Mod-i", run: () => (wrapSelection("*"), true) },
   { key: "Mod-u", run: () => (wrapSelection("<u>", "</u>"), true) },
   { key: "Mod-s", run: () => { void saveCurrentDocument(); return true; }, preventDefault: true },
+  { key: "Mod-h", run: (v) => { openSearchPanel(v); return true; }, preventDefault: true },
 ]);
 
 const theme = EditorView.theme({
@@ -24,6 +26,7 @@ const theme = EditorView.theme({
   ".cm-scroller": { fontFamily: "ui-monospace, monospace", lineHeight: "1.7" },
   ".cm-content": { padding: "16px" },
   "&.cm-focused": { outline: "none" },
+  ".cm-panel.cm-search": { fontSize: "12px" },
 });
 
 export function MarkdownEditor({ placeholderText }: { placeholderText?: string }) {
@@ -44,6 +47,15 @@ export function MarkdownEditor({ placeholderText }: { placeholderText?: string }
           history(),
           markdown(),
           syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+          search({ top: true }),
+          keymap.of(searchKeymap),
+          EditorState.phrases.of({
+            "Find": "찾기", "Replace": "바꾸기", "next": "다음", "previous": "이전",
+            "all": "모두", "match case": "대소문자", "regexp": "정규식",
+            "by word": "단어 단위", "replace": "바꾸기", "replace all": "모두 바꾸기",
+            "close": "닫기", "current match": "현재 일치", "replaced $ matches": "$개 바꿈",
+            "replaced match on line $": "$번째 줄에서 바꿈", "on line": "줄",
+          }),
           formatKeymap,
           keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap]),
           placeholder(placeholderText ?? ""),

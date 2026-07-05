@@ -40,7 +40,7 @@ export function RibbonToolbar() {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-0.5 border-b border-neutral-200 bg-white px-2 py-1 dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="no-print flex flex-wrap items-center gap-0.5 border-b border-neutral-200 bg-white px-2 py-1 dark:border-neutral-800 dark:bg-neutral-900">
       <RibbonButton title="제목 1" onClick={() => setHeadingLevel(1)}><Heading1 size={15} /></RibbonButton>
       <RibbonButton title="제목 2" onClick={() => setHeadingLevel(2)}><Heading2 size={15} /></RibbonButton>
       <RibbonButton title="제목 3" onClick={() => setHeadingLevel(3)}><Heading3 size={15} /></RibbonButton>

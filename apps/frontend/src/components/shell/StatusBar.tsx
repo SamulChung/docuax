@@ -12,7 +12,7 @@ export function StatusBar() {
   const saveState = useWorkspace((s) => s.saveState);
 
   return (
-    <div className="flex items-center gap-3 border-t border-neutral-200 bg-neutral-50 px-3 py-1 text-[10px] text-neutral-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-400">
+    <div className="no-print flex items-center gap-3 border-t border-neutral-200 bg-neutral-50 px-3 py-1 text-[10px] text-neutral-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-400">
       <span>{source.length.toLocaleString()}자</span>
       {saveState.kind !== "none" && saveState.at && (
         <span className={saveState.kind === "error" ? "text-red-500" : ""}>
