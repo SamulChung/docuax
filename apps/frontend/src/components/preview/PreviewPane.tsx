@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, ClipboardCopy, Loader2 } from "lucide-react";
 
 import { copyPreviewToClipboard } from "@/lib/clipboard";
+import { A4Sheet } from "./A4Sheet";
 import { DiffView } from "./DiffView";
 
 import {
@@ -1326,7 +1327,7 @@ export function PreviewPane() {
         {showDiff && prevSource ? (
           <DiffView oldText={prevSource} newText={source} />
         ) : (
-        <div className="h-full overflow-auto p-6">
+        <div className="h-full overflow-auto">
         {busy && <ConvertProgress />}
         {!preview && !busy && (
           <div className="flex h-full items-center justify-center text-center text-sm text-neutral-400">
@@ -1353,30 +1354,32 @@ export function PreviewPane() {
           </div>
         )}
         {preview && (
-          <article>
-            {preview.cover && <CoverPage cover={preview.cover} />}
-            {preview.title && (!preview.cover || !preview.cover.title) && (
-              <h1 className="mb-4 text-center text-2xl font-bold">{preview.title}</h1>
-            )}
-            {preview.blocks.map((b) => (
-              <BlockRenderer
-                key={b.id}
-                block={b}
-                isJumpBlock={b.id === jumpBlockId}
-                jumpRange={b.id === jumpBlockId ? jumpRange : null}
-                isSelected={selectedBlockIds.includes(b.id)}
-                isRecentlyChanged={recentlyChangedIds.includes(b.id)}
-                isEditingBlock={editingBlockId === b.id}
-                editingCell={editingCell}
-                setEditingCell={setEditingCell}
-                onSelect={handleBlockSelect}
-                onCellEdit={handleCellEdit}
-                onBlockEdit={handleBlockEdit}
-                startEditingBlock={(id) => setEditingBlockId(id)}
-                stopEditingBlock={() => setEditingBlockId(null)}
-              />
-            ))}
-          </article>
+          <A4Sheet>
+            <article>
+              {preview.cover && <CoverPage cover={preview.cover} />}
+              {preview.title && (!preview.cover || !preview.cover.title) && (
+                <h1 className="mb-4 text-center text-2xl font-bold">{preview.title}</h1>
+              )}
+              {preview.blocks.map((b) => (
+                <BlockRenderer
+                  key={b.id}
+                  block={b}
+                  isJumpBlock={b.id === jumpBlockId}
+                  jumpRange={b.id === jumpBlockId ? jumpRange : null}
+                  isSelected={selectedBlockIds.includes(b.id)}
+                  isRecentlyChanged={recentlyChangedIds.includes(b.id)}
+                  isEditingBlock={editingBlockId === b.id}
+                  editingCell={editingCell}
+                  setEditingCell={setEditingCell}
+                  onSelect={handleBlockSelect}
+                  onCellEdit={handleCellEdit}
+                  onBlockEdit={handleBlockEdit}
+                  startEditingBlock={(id) => setEditingBlockId(id)}
+                  stopEditingBlock={() => setEditingBlockId(null)}
+                />
+              ))}
+            </article>
+          </A4Sheet>
         )}
         </div>
         )}

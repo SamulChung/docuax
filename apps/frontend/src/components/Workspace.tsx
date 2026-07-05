@@ -10,6 +10,7 @@ import { RemoteControl } from "@/components/remote/RemoteControl";
 import { DocumentTabs } from "@/components/shell/DocumentTabs";
 import { MenuBar } from "@/components/shell/MenuBar";
 import { RibbonToolbar } from "@/components/shell/RibbonToolbar";
+import { StatusBar } from "@/components/shell/StatusBar";
 import { TopBar } from "@/components/TopBar";
 import { useWorkspace } from "@/store/workspace";
 
@@ -55,6 +56,8 @@ export function Workspace() {
           </div>
         </div>
       )}
+
+      <StatusBar />
 
       {/* 글로벌 채팅 확장 패널 — store 의 expanded=true 일 때만 표시 */}
       <ChatPanel />
