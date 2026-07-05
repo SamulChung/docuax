@@ -4,6 +4,8 @@ import path from "node:path";
 
 import { test, expect } from "@playwright/test";
 
+import { registerAndInjectAuth } from "./helpers";
+
 /**
  * Docuax v3 워드프로세서 E2E 통합 시나리오.
  *
@@ -12,28 +14,12 @@ import { test, expect } from "@playwright/test";
  *   → 내보내기 6종(hwpx·hwp·docx·pdf 백엔드 렌더 + .md 클라이언트 + pptx 슬라이드 연결)
  *   → 슬라이드 탭 전환 + 에디터 내용 프리필.
  *
- * 인증: middleware.ts 가 /app 접근에 docuax_token 쿠키를 요구한다 (게스트 모드 없음).
- * → 테스트가 백엔드 API 로 일회용 계정을 등록하고 쿠키 + localStorage 토큰을 심는다
- *   (src/lib/api.ts setAuthToken 과 동일한 저장 방식).
+ * 인증: e2e/helpers.ts registerAndInjectAuth — 일회용 계정 등록 + 토큰 주입.
  */
-
-const API_BASE = process.env.E2E_API_BASE ?? "http://localhost:8000";
 
 test("입력 → 변환 → 미리보기 → 내보내기 6종 → 슬라이드 연결", async ({ page, request }) => {
   // ── 0. 일회용 계정 등록 → 토큰 주입 (미들웨어 통과) ───────────────────
-  const email = `e2e-${Date.now()}@test.local`;
-  const reg = await request.post(`${API_BASE}/api/v1/auth/register`, {
-    data: { email, password: "e2e-pass-12345", name: "E2E 통합검증" },
-  });
-  expect(reg.ok(), `register 실패: ${reg.status()} ${await reg.text()}`).toBeTruthy();
-  const { access_token: token } = (await reg.json()) as { access_token: string };
-
-  await page.context().addCookies([
-    { name: "docuax_token", value: token, domain: "localhost", path: "/" },
-  ]);
-  await page.addInitScript((t) => {
-    window.localStorage.setItem("docuax.access_token", t);
-  }, token);
+  await registerAndInjectAuth(page, request, "E2E 통합검증");
 
   // "/" 접근 시 미들웨어가 로그인 상태를 감지해 /app 으로 리다이렉트
   await page.goto("/");
