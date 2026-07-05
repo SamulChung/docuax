@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, Download, FileText } from "lucide-react";
 import { LogoSymbol } from "@/components/Logo";
 import { convertDocument, downloadUrl, executeMacro, listMacros } from "@/lib/api";
 import { copyPreviewToClipboard } from "@/lib/clipboard";
+import { AUTO_CONVERT_EVENT } from "@/lib/events";
 import { getOrganizationId } from "@/lib/user";
 import { useWorkspace } from "@/store/workspace";
 
@@ -304,9 +305,23 @@ export function RemoteControl({
     };
     window.addEventListener("docuax:trigger-convert", onAiConvert);
 
+    // AUTO_CONVERT_EVENT — MenuBar(도구>변환 실행)·RibbonToolbar(AI 변환·검토)·Editor(1초 debounce)가
+    // dispatch. 예전에는 WorkerConvertPanel 에만 리스너가 있어 헤비유저 모드·리모컨 접힘·타 탭에서
+    // 무시됐다 — legacy trigger-convert 와 같은 위치(여기)에서 상시 listen 한다.
+    // detail.forceFast 미지정 시 fastConvert store 플래그가 fast/full 을 결정.
+    const onAutoConvert = (e: Event) => {
+      const detail = (e as CustomEvent<{ forceFast?: boolean }>).detail || {};
+      // 신구대조표(diff) 기준 소스 기록 — 기존 WorkerConvertPanel 리스너 동작 유지
+      const s = useWorkspace.getState();
+      s.setPrevSource(s.source);
+      handleConvert({ forceFast: detail.forceFast });
+    };
+    window.addEventListener(AUTO_CONVERT_EVENT, onAutoConvert);
+
     return () => {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("docuax:trigger-convert", onAiConvert);
+      window.removeEventListener(AUTO_CONVERT_EVENT, onAutoConvert);
     };
   }, [handleConvert, handleMacroExecute, preview]);
 

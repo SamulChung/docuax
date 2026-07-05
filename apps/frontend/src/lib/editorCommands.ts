@@ -18,7 +18,7 @@ export function unregisterEditorView(v: EditorView): void {
   if (view === v) view = null;
 }
 
-/** 등록된 EditorView 원본 접근 — MenuBar(Task 3)의 undo/redo 등에서 사용 예정. */
+/** 등록된 EditorView 원본 접근 — MenuBar의 undo/redo에서 사용. */
 export function getEditorView(): EditorView | null {
   return view;
 }

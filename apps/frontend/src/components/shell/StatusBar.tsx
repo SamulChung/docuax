@@ -15,6 +15,8 @@ export function StatusBar() {
       <span>{source.length.toLocaleString()}자</span>
       {preview && pageCount > 0 && <span>약 {pageCount}쪽</span>}
       {preview && <span>블록 {preview.blocks.length}개</span>}
+      {/* 감지된 양식 종류 — WorkerConvertPanel 의 '양식' 표시와 동일 필드 */}
+      {preview?.template_applied && <span>{preview.template_applied}</span>}
       {busy && <span className="text-brand">변환 중…</span>}
       <span className="ml-auto flex gap-1">
         {FORMATS.map((f) => (

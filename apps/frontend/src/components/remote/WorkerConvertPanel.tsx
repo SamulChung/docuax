@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { Download, FileText, Zap } from "lucide-react";
 
 import { downloadUrl } from "@/lib/api";
-import { AUTO_CONVERT_EVENT } from "@/lib/events";
 import { useWorkspace } from "@/store/workspace";
 
 import { MarkdownDropZone } from "./MarkdownDropZone";
@@ -33,11 +32,8 @@ export function WorkerConvertPanel({ onConvert, onMacro, busy }: WorkerConvertPa
     onConvert({ forceFast: true });
   }, [onConvert, setPrevSource, source]);
 
-  useEffect(() => {
-    const handler = () => { if (!busy) { setPrevSource(source); onConvert({ forceFast: true }); } };
-    window.addEventListener(AUTO_CONVERT_EVENT, handler);
-    return () => window.removeEventListener(AUTO_CONVERT_EVENT, handler);
-  }, [busy, onConvert, setPrevSource, source]);
+  // AUTO_CONVERT_EVENT 리스너는 RemoteControl 로 이동 (F1) —
+  // 이 패널은 persona/탭/접힘에 따라 unmount 되므로 여기서 listen 하면 이벤트가 유실된다.
 
   return (
     <div className="space-y-3 p-3">

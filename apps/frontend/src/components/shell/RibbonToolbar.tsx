@@ -65,7 +65,7 @@ export function RibbonToolbar() {
       <RibbonButton title="링크" onClick={() => wrapSelection("[", "](url)")}><LinkIcon size={15} /></RibbonButton>
       <Divider />
       <button
-        onClick={dispatchAutoConvert}
+        onClick={() => dispatchAutoConvert()}
         className="flex items-center gap-1 rounded bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300"
       >
         <Sparkles size={12} /> AI 변환·검토

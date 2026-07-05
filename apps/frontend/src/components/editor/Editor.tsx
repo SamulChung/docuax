@@ -25,7 +25,8 @@ export function Editor() {
   useEffect(() => {
     if (!autoConvert || !source.trim()) return;
     const timer = setTimeout(() => {
-      dispatchAutoConvert();
+      // 자동반영 debounce 는 항상 빠른 변환 — 입력마다 LLM 분석·검토를 돌리지 않음
+      dispatchAutoConvert({ forceFast: true });
     }, 1000);
     return () => clearTimeout(timer);
   }, [source, autoConvert]);

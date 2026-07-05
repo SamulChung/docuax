@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Download, ChevronDown } from "lucide-react";
+import { Download, ChevronDown, X } from "lucide-react";
 
 import { downloadUrl } from "@/lib/api";
-import { downloadMarkdown } from "@/lib/download";
+import { downloadBlob, downloadMarkdown, parseDocuaxWarnings } from "@/lib/download";
 import { useWorkspace } from "@/store/workspace";
 
 const BACKEND_FORMATS = [
@@ -14,8 +14,30 @@ const BACKEND_FORMATS = [
   { fmt: "pdf" as const, label: "PDF (.pdf)" },
 ];
 
+/** Content-Disposition 에서 파일명 추출 — filename*=UTF-8''… 우선, 없으면 filename="…". */
+function filenameFromDisposition(header: string | null): string | null {
+  if (!header) return null;
+  const star = /filename\*=(?:UTF-8'')?([^;]+)/i.exec(header);
+  if (star) {
+    try {
+      return decodeURIComponent(star[1].trim().replace(/^"|"$/g, ""));
+    } catch {
+      /* 잘못된 인코딩 — 아래 filename= 로 폴백 */
+    }
+  }
+  const plain = /filename="?([^";]+)"?/i.exec(header);
+  return plain ? plain[1].trim() : null;
+}
+
+type HwpNotice =
+  | { kind: "warn"; warnings: string[] }
+  | { kind: "error" };
+
 export function ExportMenu() {
   const [open, setOpen] = useState(false);
+  // HWP 강등 경고/실패 안내 배너 (설계문서 §3.5·§5) — 컴포넌트 로컬, X 로 닫음
+  const [hwpNotice, setHwpNotice] = useState<HwpNotice | null>(null);
+  const [hwpBusy, setHwpBusy] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const preview = useWorkspace((s) => s.preview);
   const source = useWorkspace((s) => s.source);
@@ -34,6 +56,28 @@ export function ExportMenu() {
 
   const documentId = preview?.document_id ?? null;
 
+  // HWP 만 fetch 로 받는다 — 백엔드가 강등 경고를 X-Docuax-Warnings 헤더로 싣는데
+  // (render.py, 설계문서 §3.5) <a href> 다운로드로는 헤더를 읽을 수 없기 때문.
+  const handleHwpDownload = async () => {
+    if (!documentId || hwpBusy) return;
+    setHwpNotice(null);
+    setHwpBusy(true);
+    try {
+      const res = await fetch(downloadUrl(documentId, "hwp"));
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const warnings = parseDocuaxWarnings(res.headers.get("X-Docuax-Warnings"));
+      const fallbackName =
+        `${(title || "document").trim().replace(/[\\/:*?"<>|]/g, "_") || "document"}.hwp`;
+      const filename = filenameFromDisposition(res.headers.get("Content-Disposition")) ?? fallbackName;
+      downloadBlob(await res.blob(), filename);
+      if (warnings.length > 0) setHwpNotice({ kind: "warn", warnings });
+    } catch {
+      setHwpNotice({ kind: "error" });
+    } finally {
+      setHwpBusy(false);
+    }
+  };
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -46,22 +90,42 @@ export function ExportMenu() {
       </button>
       {open && (
         <div className="absolute right-0 top-full z-40 mt-1 w-56 rounded-lg border border-neutral-200 bg-white py-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
-          {BACKEND_FORMATS.map(({ fmt, label }) => (
-            <a
-              key={fmt}
-              href={documentId ? downloadUrl(documentId, fmt) : undefined}
-              aria-disabled={!documentId}
-              onClick={(e) => { if (!documentId) e.preventDefault(); setOpen(false); }}
-              className={`block px-3 py-1.5 text-xs ${
-                documentId
-                  ? "text-neutral-700 hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                  : "cursor-not-allowed text-neutral-300 dark:text-neutral-600"
-              }`}
-              title={documentId ? undefined : "먼저 변환(Ctrl+Enter)을 실행하세요"}
-            >
-              {label}
-            </a>
-          ))}
+          {BACKEND_FORMATS.map(({ fmt, label }) =>
+            fmt === "hwp" ? (
+              <button
+                key={fmt}
+                onClick={() => {
+                  if (!documentId) return;
+                  setOpen(false);
+                  void handleHwpDownload();
+                }}
+                disabled={!documentId || hwpBusy}
+                className={`block w-full px-3 py-1.5 text-left text-xs ${
+                  documentId
+                    ? "text-neutral-700 hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                    : "cursor-not-allowed text-neutral-300 dark:text-neutral-600"
+                }`}
+                title={documentId ? undefined : "먼저 변환(Ctrl+Enter)을 실행하세요"}
+              >
+                {hwpBusy ? "HWP 생성 중…" : label}
+              </button>
+            ) : (
+              <a
+                key={fmt}
+                href={documentId ? downloadUrl(documentId, fmt) : undefined}
+                aria-disabled={!documentId}
+                onClick={(e) => { if (!documentId) e.preventDefault(); setOpen(false); }}
+                className={`block px-3 py-1.5 text-xs ${
+                  documentId
+                    ? "text-neutral-700 hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                    : "cursor-not-allowed text-neutral-300 dark:text-neutral-600"
+                }`}
+                title={documentId ? undefined : "먼저 변환(Ctrl+Enter)을 실행하세요"}
+              >
+                {label}
+              </a>
+            ),
+          )}
           <button
             onClick={() => { downloadMarkdown(source, title); setOpen(false); }}
             disabled={!source.trim()}
@@ -80,6 +144,55 @@ export function ExportMenu() {
           >
             프레젠테이션 (.pptx) — 슬라이드 탭으로
           </button>
+        </div>
+      )}
+
+      {/* HWP 강등 경고 / 실패 안내 — 내보내기 버튼 아래 배너, X 로 닫음 */}
+      {hwpNotice && (
+        <div
+          role="alert"
+          className={`absolute right-0 top-full z-40 mt-1 w-72 rounded-lg border p-2.5 text-[11px] shadow-lg ${
+            hwpNotice.kind === "warn"
+              ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300"
+              : "border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
+          }`}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              {hwpNotice.kind === "warn" ? (
+                <>
+                  <div className="font-semibold">
+                    일부 요소가 텍스트로 대체되었습니다 ({hwpNotice.warnings.length}건). 완전한 서식은 HWPX 권장
+                  </div>
+                  <ul className="mt-1 max-h-24 list-disc space-y-0.5 overflow-y-auto pl-4 opacity-80">
+                    {hwpNotice.warnings.map((w, i) => (
+                      <li key={i}>{w}</li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <div className="font-semibold">HWP 생성 실패 — HWPX 형식을 사용해주세요</div>
+              )}
+              {documentId && (
+                <a
+                  href={downloadUrl(documentId, "hwpx")}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1.5 inline-flex items-center gap-1 font-semibold underline"
+                >
+                  <Download size={11} />
+                  HWPX로 다운로드
+                </a>
+              )}
+            </div>
+            <button
+              onClick={() => setHwpNotice(null)}
+              aria-label="경고 닫기"
+              className="shrink-0 rounded p-0.5 opacity-60 hover:opacity-100"
+            >
+              <X size={12} />
+            </button>
+          </div>
         </div>
       )}
     </div>

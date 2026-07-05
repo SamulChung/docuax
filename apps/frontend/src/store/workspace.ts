@@ -56,7 +56,7 @@ interface WorkspaceState {
   fastConvert: boolean;
   setFastConvert: (v: boolean) => void;
 
-  /** 자동 변환 — 입력 후 2.5초 debounce 로 자동 변환 */
+  /** 자동 변환 — 입력 후 1초 debounce 로 자동 변환 */
   autoConvert: boolean;
   setAutoConvert: (v: boolean) => void;
 
