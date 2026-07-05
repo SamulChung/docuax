@@ -19,6 +19,13 @@ export function DocumentPicker({ onClose }: { onClose: () => void }) {
 
   useEffect(() => { load(); }, []);
 
+  // Esc로 닫기 — 다른 모달(PromptLibrary 등)과 동일한 UX
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   const open = async (id: string) => {
     const s = useWorkspace.getState();
     if (s.dirty && s.source.trim() && !confirm("저장하지 않은 변경이 있습니다. 계속할까요?")) return;
