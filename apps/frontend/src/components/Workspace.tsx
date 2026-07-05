@@ -12,6 +12,7 @@ import { MenuBar } from "@/components/shell/MenuBar";
 import { RibbonToolbar } from "@/components/shell/RibbonToolbar";
 import { StatusBar } from "@/components/shell/StatusBar";
 import { TopBar } from "@/components/TopBar";
+import { saveCurrentDocument } from "@/lib/docActions";
 import { loadDraft } from "@/lib/draft";
 import { useWorkspace } from "@/store/workspace";
 
@@ -33,8 +34,18 @@ export function Workspace() {
     if (draft?.source) {
       setSource(draft.source);
       setTitle(draft.title);
+      if (draft.docId) useWorkspace.getState().setCurrentDocId(draft.docId);
       useWorkspace.getState().setSaveState({ kind: "draft", at: draft.savedAt });
     }
+  }, []);
+
+  // 서버 자동 저장 — 서버 문서 연결 + 변경 존재 시 30초마다
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const s = useWorkspace.getState();
+      if (s.currentDocId && s.dirty && s.source.trim()) void saveCurrentDocument();
+    }, 30_000);
+    return () => clearInterval(timer);
   }, []);
 
   return (

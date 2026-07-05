@@ -4,15 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import { undo, redo } from "@codemirror/commands";
 
 import { getEditorView, insertBlock, setHeadingLevel, wrapSelection } from "@/lib/editorCommands";
+import { saveAsNewDocument, saveCurrentDocument } from "@/lib/docActions";
 import { downloadMarkdown } from "@/lib/download";
 import { dispatchAutoConvert } from "@/lib/events";
 import { useWorkspace } from "@/store/workspace";
+import { DocumentPicker } from "./DocumentPicker";
 import { ExportMenu } from "./ExportMenu";
 
 type MenuItem = { label: string; action: () => void } | "divider";
 
 export function MenuBar() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const source = useWorkspace((s) => s.source);
   const title = useWorkspace((s) => s.title);
@@ -37,7 +40,13 @@ export function MenuBar() {
   const MENUS: Record<string, MenuItem[]> = {
     파일: [
       { label: "새 문서", action: () => { if (confirm("에디터 내용을 초기화할까요?")) resetWorkspace(); } },
+      { label: "열기… (내 문서)", action: () => setPickerOpen(true) },
+      "divider",
+      { label: "저장 (Ctrl+S)", action: () => void saveCurrentDocument() },
+      { label: "다른 이름으로 저장", action: () => void saveAsNewDocument() },
+      "divider",
       { label: "마크다운으로 저장 (.md)", action: () => downloadMarkdown(source, title) },
+      { label: "인쇄 (Ctrl+P)", action: () => window.print() },
     ],
     편집: [
       { label: "실행 취소 (Ctrl+Z)", action: withEditor((v) => undo(v)) },
@@ -101,6 +110,7 @@ export function MenuBar() {
       <div className="ml-auto">
         <ExportMenu />
       </div>
+      {pickerOpen && <DocumentPicker onClose={() => setPickerOpen(false)} />}
     </div>
   );
 }

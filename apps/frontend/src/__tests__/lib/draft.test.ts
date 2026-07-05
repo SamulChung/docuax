@@ -27,4 +27,17 @@ describe("draft", () => {
     localStorage.setItem(DRAFT_KEY, "{broken");
     expect(loadDraft()).toBeNull();
   });
+
+  it("docId 왕복 — 저장 시 함께 기록되고 복원된다", () => {
+    saveDraft({ source: "# 제목", title: "문서1", docId: "doc-123" });
+    const d = loadDraft();
+    expect(d?.docId).toBe("doc-123");
+  });
+
+  it("docId 없이 저장된 기존 draft도 하위호환으로 통과한다", () => {
+    saveDraft({ source: "# 제목", title: "문서1" });
+    const d = loadDraft();
+    expect(d).not.toBeNull();
+    expect(d?.docId).toBeUndefined();
+  });
 });

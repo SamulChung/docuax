@@ -1231,6 +1231,40 @@ export async function uploadTemplate(input: {
   return res.json();
 }
 
+// ─── 문서 보관함 ───────────────────────────────────────────────────────────
+
+export interface DocumentListItem {
+  id: string;
+  title: string;
+  preview: string;
+  updated_at: string;
+}
+
+export interface DocumentOut extends DocumentListItem {
+  source_md: string;
+  created_at: string;
+}
+
+export async function listDocuments(limit = 50, offset = 0) {
+  return http<DocumentListItem[]>(`/documents?limit=${limit}&offset=${offset}`);
+}
+
+export async function createDocument(input: { title: string; source_md: string }) {
+  return http<DocumentOut>("/documents", { method: "POST", body: JSON.stringify(input) });
+}
+
+export async function getDocument(id: string) {
+  return http<DocumentOut>(`/documents/${id}`);
+}
+
+export async function updateDocument(id: string, input: { title?: string; source_md?: string }) {
+  return http<DocumentOut>(`/documents/${id}`, { method: "PUT", body: JSON.stringify(input) });
+}
+
+export async function deleteDocument(id: string) {
+  return http<{ ok: boolean; deleted_id: string }>(`/documents/${id}`, { method: "DELETE" });
+}
+
 // ── 슬라이드 API ──────────────────────────────────────────────
 
 export async function generateSlides(req: import("./slides/types").GenerateRequest): Promise<import("./slides/types").SlideSchema> {

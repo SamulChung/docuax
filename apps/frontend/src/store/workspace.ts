@@ -76,9 +76,17 @@ interface WorkspaceState {
   pageCount: number;
   setPageCount: (n: number) => void;
 
-  /** 저장 상태 — draft: 로컬 임시, saved: 서버 저장됨, error: 서버 저장 실패 */
+  /** 저장 상태 — draft: 로컬 임시, saved: 서버 저장됨, error: 서버 저장 실패. saved/error는 docActions(서버 저장)가 설정. */
   saveState: { kind: "none" | "draft" | "saved" | "error"; at: number | null };
   setSaveState: (s: WorkspaceState["saveState"]) => void;
+
+  /** 서버 문서 연결 — 열려 있는 서버 문서 id (없으면 순수 로컬) */
+  currentDocId: string | null;
+  setCurrentDocId: (id: string | null) => void;
+
+  /** 마지막 서버 저장 이후 수정 여부 */
+  dirty: boolean;
+  setDirty: (d: boolean) => void;
 }
 
 // 첫 진입 시 에디터는 빈 상태로 — Editor.tsx 의 안내 카드가 표시되며
@@ -91,7 +99,7 @@ let jumpSeq = 0;
 export const useWorkspace = create<WorkspaceState>((set, get) => ({
   source: DEFAULT_SOURCE,
   // 들어오는 모든 source 텍스트를 한 번에 정제 — paste된 깨진 유니코드(lone surrogate) 차단
-  setSource: (s) => set({ source: sanitizeString(s) }),
+  setSource: (s) => set({ source: sanitizeString(s), dirty: true }),
 
   title: "",
   setTitle: (t) => set({ title: sanitizeString(t) }),
@@ -211,7 +219,14 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
   saveState: { kind: "none", at: null },
   setSaveState: (s) => set({ saveState: s }),
 
+  currentDocId: null,
+  setCurrentDocId: (id) => set({ currentDocId: id }),
+
+  dirty: false,
+  setDirty: (d) => set({ dirty: d }),
+
   resetWorkspace: () => {
+    cancelPendingDraft();
     clearDraft();
     set({
       source: DEFAULT_SOURCE,        // ""
@@ -225,18 +240,35 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
       activeTab: "doc",
       pageCount: 0,
       saveState: { kind: "none", at: null },
+      currentDocId: null,
+      dirty: false,
     });
   },
 }));
 
 // ── 자동 임시 저장 — source/title 변경 1초 후 localStorage 기록 ──
+let draftTimer: ReturnType<typeof setTimeout> | null = null;
+
+// resetWorkspace가 이미 취소된 상태를 가정하지 않도록 pending debounce 콜백을 명시적으로 취소.
+// (function 선언은 hoisting되므로 store 정의보다 아래에 있어도 위에서 참조 가능)
+function cancelPendingDraft() {
+  if (draftTimer) {
+    clearTimeout(draftTimer);
+    draftTimer = null;
+  }
+}
+
 if (typeof window !== "undefined") {
-  let draftTimer: ReturnType<typeof setTimeout> | null = null;
   useWorkspace.subscribe((state, prev) => {
     if (state.source === prev.source && state.title === prev.title) return;
     if (draftTimer) clearTimeout(draftTimer);
     draftTimer = setTimeout(() => {
-      saveDraft({ source: useWorkspace.getState().source, title: useWorkspace.getState().title });
+      draftTimer = null;
+      saveDraft({
+        source: useWorkspace.getState().source,
+        title: useWorkspace.getState().title,
+        docId: useWorkspace.getState().currentDocId,
+      });
       if (useWorkspace.getState().source.trim()) {
         useWorkspace.getState().setSaveState({ kind: "draft", at: Date.now() });
       }

@@ -5,9 +5,11 @@ export interface Draft {
   source: string;
   title: string;
   savedAt: number;
+  /** 연결된 서버 문서 id — 없으면 순수 로컬 draft (기존 draft와 하위호환) */
+  docId?: string | null;
 }
 
-export function saveDraft(d: { source: string; title: string }): void {
+export function saveDraft(d: { source: string; title: string; docId?: string | null }): void {
   try {
     if (!d.source.trim()) {
       localStorage.removeItem(DRAFT_KEY);

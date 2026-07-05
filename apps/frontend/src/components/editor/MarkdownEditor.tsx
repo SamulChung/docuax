@@ -7,6 +7,7 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirro
 import { markdown } from "@codemirror/lang-markdown";
 import { syntaxHighlighting, defaultHighlightStyle } from "@codemirror/language";
 
+import { saveCurrentDocument } from "@/lib/docActions";
 import { notifySelectionChange, registerEditorView, unregisterEditorView, wrapSelection } from "@/lib/editorCommands";
 import { sanitizeString } from "@/lib/sanitize";
 import { useWorkspace } from "@/store/workspace";
@@ -15,6 +16,7 @@ const formatKeymap = keymap.of([
   { key: "Mod-b", run: () => (wrapSelection("**"), true) },
   { key: "Mod-i", run: () => (wrapSelection("*"), true) },
   { key: "Mod-u", run: () => (wrapSelection("<u>", "</u>"), true) },
+  { key: "Mod-s", run: () => { void saveCurrentDocument(); return true; }, preventDefault: true },
 ]);
 
 const theme = EditorView.theme({
