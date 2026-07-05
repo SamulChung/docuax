@@ -114,7 +114,7 @@ const CHART_TEMPLATES: ChartTemplate[] = [
   "title": "시장 점유율 추이",
   "labels": ["2023", "2024", "2025", "2026"],
   "datasets": [
-    {"label": "DocuAX", "data": [5, 12, 22, 35]},
+    {"label": "DocuAI", "data": [5, 12, 22, 35]},
     {"label": "경쟁사 A", "data": [40, 38, 35, 30]},
     {"label": "경쟁사 B", "data": [30, 28, 25, 20]},
     {"label": "기타", "data": [25, 22, 18, 15]}
@@ -300,7 +300,7 @@ const CHART_TEMPLATES: ChartTemplate[] = [
   "x_label": "점유율",
   "y_label": "만족도",
   "datasets": [
-    {"label": "DocuAX", "data": [[15, 9.0, 50, "DocuAX"]], "color": "#1F5BAF"},
+    {"label": "DocuAI", "data": [[15, 9.0, 50, "DocuAI"]], "color": "#1F5BAF"},
     {"label": "경쟁사", "data": [[35, 7.5, 120, "A사"], [25, 8.0, 90, "B사"], [10, 7.0, 30, "C사"]]}
   ]
 }
@@ -352,7 +352,7 @@ const CHART_TEMPLATES: ChartTemplate[] = [
   "title": "제품 비교 평가",
   "labels": ["가격", "성능", "사용성", "지원", "확장성", "보안"],
   "datasets": [
-    {"label": "DocuAX", "data": [85, 90, 95, 88, 92, 87], "color": "#1F5BAF"},
+    {"label": "DocuAI", "data": [85, 90, 95, 88, 92, 87], "color": "#1F5BAF"},
     {"label": "경쟁사", "data": [70, 75, 65, 80, 70, 78], "color": "#F4B400"}
   ]
 }
@@ -591,7 +591,7 @@ export function InsertVisualBar({ textareaRef, onInsert }: InsertVisualBarProps 
       "title: (제목을 입력하세요)",
       "subtitle: (부제 — 선택)",
       "author: 정원훈",
-      "organization: (주)텐에이아이 · DocuAX",
+      "organization: (주)텐에이아이 · DocuAI",
       "department: ",
       `date: ${today}`,
       "document_number: DOCUAX-2026-",

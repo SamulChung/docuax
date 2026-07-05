@@ -357,7 +357,7 @@ export function SamplePicker({ onClose }: Props) {
         <footer className="border-t border-neutral-200 px-5 py-2 text-[10px] text-neutral-500 dark:border-neutral-800">
           <div>ⓘ 업로드 한도 20MB · 스캔 PDF는 OCR provider 활성화 시 자동 추출 · 조직 ID가 같은 사용자끼리 공유 양식을 볼 수 있습니다.</div>
           <div className="mt-1 text-[9px] text-neutral-400">
-            한컴 상표 면책: &quot;한글&quot;·&quot;한컴&quot;·&quot;HWP&quot;·&quot;HWPX&quot;는 (주)한글과컴퓨터의 등록 상표. DocuAX는 한컴과 제휴·후원·승인 관계 없는 독립 프로젝트로, 본인 소유 파일의 합법적 호환성 처리만 수행합니다.
+            한컴 상표 면책: &quot;한글&quot;·&quot;한컴&quot;·&quot;HWP&quot;·&quot;HWPX&quot;는 (주)한글과컴퓨터의 등록 상표. DocuAI는 한컴과 제휴·후원·승인 관계 없는 독립 프로젝트로, 본인 소유 파일의 합법적 호환성 처리만 수행합니다.
           </div>
         </footer>
       </div>

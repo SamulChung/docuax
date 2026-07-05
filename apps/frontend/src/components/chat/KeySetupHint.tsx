@@ -218,7 +218,7 @@ export function KeySetupHint({ providerId, providerName, onClose }: Props) {
                   관리자만 LLM 키를 등록할 수 있습니다.
                 </p>
                 <p className="mt-1">
-                  현재 DocuAX 는 회사·기관 단위로 운영됩니다 — 외부 LLM(Claude·ChatGPT) 키는
+                  현재 DocuAI 는 회사·기관 단위로 운영됩니다 — 외부 LLM(Claude·ChatGPT) 키는
                   운영자(관리자)가 등록·관리합니다.
                 </p>
               </div>
@@ -242,7 +242,7 @@ export function KeySetupHint({ providerId, providerName, onClose }: Props) {
                 <textarea
                   readOnly
                   rows={3}
-                  value={`안녕하세요. DocuAX 에서 ${providerName} 모델을 사용하고 싶습니다.\n` +
+                  value={`안녕하세요. DocuAI 에서 ${providerName} 모델을 사용하고 싶습니다.\n` +
                     `관리자 콘솔 → LLM 설정에서 ${guide.envKey} 등록을 부탁드립니다.`}
                   className="mt-1.5 w-full resize-none rounded border border-neutral-200 bg-white p-2 text-[11px] dark:border-neutral-700 dark:bg-neutral-900"
                 />

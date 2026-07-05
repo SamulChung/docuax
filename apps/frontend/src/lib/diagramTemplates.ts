@@ -181,9 +181,9 @@ classDiagram
     defaultWidth: "80%",
     defaultAlign: "center",
     source: `C4Context
-    title DocuAX 시스템 컨텍스트
+    title DocuAI 시스템 컨텍스트
     Person(user, "사용자", "문서 작성자")
-    System(docuax, "DocuAX", "AI 문서 변환 플랫폼")
+    System(docuax, "DocuAI", "AI 문서 변환 플랫폼")
     System_Ext(hwp, "한컴오피스", "한글 문서 편집")
     System_Ext(llm, "TenOS", "LLM 두뇌")
     Rel(user, docuax, "마크다운 입력")
@@ -231,7 +231,7 @@ classDiagram
     defaultWidth: "80%",
     defaultAlign: "center",
     source: `---
-title: DocuAX 데이터 모델
+title: DocuAI 데이터 모델
 ---
 erDiagram
     USER ||--o{ DOCUMENT : 작성
@@ -303,7 +303,7 @@ erDiagram
     defaultWidth: "80%",
     defaultAlign: "center",
     source: `timeline
-    title DocuAX 로드맵
+    title DocuAI 로드맵
     2026.03 : 법인 설립
     2026.05 : 베타 출시 : 시각 요소 5종
     2026.07 : 정식 출시 : Pro/Team 플랜
@@ -368,7 +368,7 @@ erDiagram
     defaultWidth: "80%",
     defaultAlign: "center",
     source: `mindmap
-  root((DocuAX))
+  root((DocuAI))
     문서 작성
       마크다운
       AI 어시스턴트

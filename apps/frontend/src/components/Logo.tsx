@@ -1,7 +1,7 @@
-// DocuAX 공식 로고 — 베이스라인 정렬 락업.
+// DocuAI 공식 로고 — 베이스라인 정렬 락업.
 // 출처: docuax_logo_baseline_aligned.html
 // 그라디언트: #0A3F90 → #1565C8 → #2998E5
-// 워드마크: Docu(#0F1A3D) + AX(#1B7FA8)
+// 워드마크: Docu(#0F1A3D) + AI(#1B7FA8)
 
 import { useId } from "react";
 
@@ -11,7 +11,7 @@ interface SymbolProps {
   title?: string;
 }
 
-export function LogoSymbol({ size = 32, className, title = "DocuAX" }: SymbolProps) {
+export function LogoSymbol({ size = 32, className, title = "DocuAI" }: SymbolProps) {
   const uid = useId().replace(/:/g, "");
   const gradId = `lg-${uid}`;
   const clipId = `clip-${uid}`;
@@ -59,7 +59,7 @@ interface LockupProps {
 }
 
 /**
- * DocuAX 풀 락업 — 심볼 + 워드마크 (베이스라인 정확 일치).
+ * DocuAI 풀 락업 — 심볼 + 워드마크 (베이스라인 정확 일치).
  * 원본 HTML의 size별 gap 비율을 따른다:
  *   100px → gap 6   64px → gap 4   40px → gap 3   26px → gap 2
  */
@@ -82,7 +82,7 @@ export function LogoLockup({ size = 32, gap, className }: LockupProps) {
         viewBox="0 0 450 100"
         xmlns="http://www.w3.org/2000/svg"
         role="img"
-        aria-label="DocuAX"
+        aria-label="DocuAI"
       >
         <text
           x="0"
@@ -93,7 +93,7 @@ export function LogoLockup({ size = 32, gap, className }: LockupProps) {
           letterSpacing="-4"
         >
           <tspan fill="#0F1A3D">Docu</tspan>
-          <tspan fill="#1B7FA8">AX</tspan>
+          <tspan fill="#1B7FA8">AI</tspan>
         </text>
       </svg>
     </div>

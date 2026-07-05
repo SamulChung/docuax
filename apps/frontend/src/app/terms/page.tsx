@@ -3,7 +3,7 @@ import Link from "next/link";
 import { LogoLockup } from "@/components/Logo";
 
 export const metadata = {
-  title: "이용약관 — DocuAX",
+  title: "이용약관 — DocuAI",
 };
 
 export default function TermsPage() {
@@ -16,7 +16,7 @@ export default function TermsPage() {
         <LogoLockup size={20} />
       </Link>
 
-      <h1 className="mt-6 text-2xl font-bold">DocuAX 이용약관</h1>
+      <h1 className="mt-6 text-2xl font-bold">DocuAI 이용약관</h1>
       <p className="mt-1 text-xs text-neutral-500">최종 개정일: 2026년 5월 18일 · 시행일: 2026년 7월 1일</p>
 
       <div className="mt-4 rounded border border-neutral-200 bg-neutral-50 p-3 text-xs dark:border-neutral-800 dark:bg-neutral-900">
@@ -31,7 +31,7 @@ export default function TermsPage() {
           <li>대표전화: <a href="tel:+82-2-588-9881" className="font-mono text-brand hover:underline">02-588-9881</a></li>
           <li>업태·종목: 정보통신업·교육서비스업 (응용 소프트웨어 개발 및 공급업)</li>
           <li>회사 웹사이트: <a href="https://www.tenai.kr" target="_blank" rel="noopener" className="text-brand hover:underline">www.tenai.kr</a></li>
-          <li>서비스: DocuAX (<a href="https://www.docuax.com" target="_blank" rel="noopener" className="text-brand hover:underline">www.docuax.com</a>)</li>
+          <li>서비스: DocuAI (<a href="https://www.docuax.com" target="_blank" rel="noopener" className="text-brand hover:underline">www.docuax.com</a>)</li>
           <li>고객 문의: <a href="mailto:contact@tenai.kr" className="text-brand hover:underline">contact@tenai.kr</a></li>
         </ul>
       </div>
@@ -41,7 +41,7 @@ export default function TermsPage() {
           <h2 className="text-lg font-bold">제 1 조 (목적)</h2>
           <p>
             본 약관은 (주)텐에이아이(이하 "회사")이 제공하는 한국어 LLM 기반 문서 자동화 SaaS
-            "DocuAX"(이하 "서비스")의 이용과 관련하여 회사와 이용자의 권리·의무 및 책임 사항을
+            "DocuAI"(이하 "서비스")의 이용과 관련하여 회사와 이용자의 권리·의무 및 책임 사항을
             규정함을 목적으로 합니다.
           </p>
         </section>

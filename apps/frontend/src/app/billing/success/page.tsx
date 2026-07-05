@@ -4,7 +4,7 @@ import { CheckCircle2, ArrowRight } from "lucide-react";
 import { LogoLockup } from "@/components/Logo";
 
 export const metadata = {
-  title: "결제 완료 — DocuAX",
+  title: "결제 완료 — DocuAI",
 };
 
 export default function BillingSuccessPage() {
@@ -18,7 +18,7 @@ export default function BillingSuccessPage() {
         <CheckCircle2 size={56} className="mx-auto text-emerald-600" />
         <h1 className="mt-4 text-2xl font-bold">결제가 완료되었습니다</h1>
         <p className="mt-2 text-sm text-neutral-700 dark:text-neutral-300">
-          DocuAX 프리미엄 기능이 즉시 활성화됩니다.
+          DocuAI 프리미엄 기능이 즉시 활성화됩니다.
           <br />
           매크로 100종·RAG 양식 학습·우선 지원 등을 마음껏 사용해 보세요.
         </p>

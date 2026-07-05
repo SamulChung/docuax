@@ -65,7 +65,7 @@ export function OrganizationPicker() {
         onChange={(e) => handleSelect(e.target.value || null)}
         className="w-full rounded border border-neutral-200 bg-white px-2 py-1.5 text-xs focus:border-brand focus:outline-none dark:border-neutral-700 dark:bg-neutral-950"
       >
-        <option value="">기본 (DocuAX)</option>
+        <option value="">기본 (DocuAI)</option>
         {orgs.map((o) => (
           <option key={o.id} value={o.id}>
             {o.name}
