@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
 import { ChatPanel } from "@/components/chat/ChatPanel";
@@ -12,6 +12,7 @@ import { MenuBar } from "@/components/shell/MenuBar";
 import { RibbonToolbar } from "@/components/shell/RibbonToolbar";
 import { StatusBar } from "@/components/shell/StatusBar";
 import { TopBar } from "@/components/TopBar";
+import { loadDraft } from "@/lib/draft";
 import { useWorkspace } from "@/store/workspace";
 
 // Fabric.js SSR 불가 — 슬라이드 탭은 클라이언트 전용 로드
@@ -23,6 +24,18 @@ const SlideWorkspace = dynamic(
 export function Workspace() {
   const [remoteCollapsed, setRemoteCollapsed] = useState(false);
   const activeTab = useWorkspace((s) => s.activeTab);
+
+  // 임시 저장 복구 — 에디터가 비어 있을 때만 (마운트 1회)
+  useEffect(() => {
+    const { source, setSource, setTitle } = useWorkspace.getState();
+    if (source.trim()) return;
+    const draft = loadDraft();
+    if (draft?.source) {
+      setSource(draft.source);
+      setTitle(draft.title);
+      useWorkspace.getState().setSaveState({ kind: "draft", at: draft.savedAt });
+    }
+  }, []);
 
   return (
     <div className="flex h-[calc(100vh-300px)] min-h-[640px] flex-col">

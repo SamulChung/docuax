@@ -2,6 +2,7 @@
 import { create } from "zustand";
 
 import type { ConvertPreview, PersonaMode } from "@/lib/api";
+import { clearDraft, saveDraft } from "@/lib/draft";
 import { sanitizeString } from "@/lib/sanitize";
 
 export interface JumpTarget {
@@ -74,6 +75,10 @@ interface WorkspaceState {
   /** A4 미리보기 추정 쪽수 (상태바 표시용) */
   pageCount: number;
   setPageCount: (n: number) => void;
+
+  /** 저장 상태 — draft: 로컬 임시, saved: 서버 저장됨, error: 서버 저장 실패 */
+  saveState: { kind: "none" | "draft" | "saved" | "error"; at: number | null };
+  setSaveState: (s: WorkspaceState["saveState"]) => void;
 }
 
 // 첫 진입 시 에디터는 빈 상태로 — Editor.tsx 의 안내 카드가 표시되며
@@ -203,7 +208,11 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
   pageCount: 0,
   setPageCount: (n) => set({ pageCount: n }),
 
-  resetWorkspace: () =>
+  saveState: { kind: "none", at: null },
+  setSaveState: (s) => set({ saveState: s }),
+
+  resetWorkspace: () => {
+    clearDraft();
     set({
       source: DEFAULT_SOURCE,        // ""
       title: "",
@@ -215,5 +224,22 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
       jumpTarget: null,
       activeTab: "doc",
       pageCount: 0,
-    }),
+      saveState: { kind: "none", at: null },
+    });
+  },
 }));
+
+// ── 자동 임시 저장 — source/title 변경 1초 후 localStorage 기록 ──
+if (typeof window !== "undefined") {
+  let draftTimer: ReturnType<typeof setTimeout> | null = null;
+  useWorkspace.subscribe((state, prev) => {
+    if (state.source === prev.source && state.title === prev.title) return;
+    if (draftTimer) clearTimeout(draftTimer);
+    draftTimer = setTimeout(() => {
+      saveDraft({ source: useWorkspace.getState().source, title: useWorkspace.getState().title });
+      if (useWorkspace.getState().source.trim()) {
+        useWorkspace.getState().setSaveState({ kind: "draft", at: Date.now() });
+      }
+    }, 1000);
+  });
+}
