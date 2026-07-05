@@ -3,7 +3,7 @@
 import {
   Bold, Italic, Underline, Strikethrough,
   Heading1, Heading2, Heading3, Pilcrow,
-  List, ListOrdered, Quote, Minus, Table, Link as LinkIcon,
+  List, ListOrdered, ListTree, Quote, Minus, Table, Link as LinkIcon,
   Sparkles, Presentation,
 } from "lucide-react";
 
@@ -33,6 +33,7 @@ function Divider() {
 export function RibbonToolbar() {
   const source = useWorkspace((s) => s.source);
   const setActiveTab = useWorkspace((s) => s.setActiveTab);
+  const toggleOutline = useWorkspace((s) => s.toggleOutline);
 
   const toSlides = () => {
     try { sessionStorage.setItem("docuax_slide_prefill", source); } catch {}
@@ -41,6 +42,8 @@ export function RibbonToolbar() {
 
   return (
     <div className="no-print flex flex-wrap items-center gap-0.5 border-b border-neutral-200 bg-white px-2 py-1 dark:border-neutral-800 dark:bg-neutral-900">
+      <RibbonButton title="목차" onClick={toggleOutline}><ListTree size={15} /></RibbonButton>
+      <Divider />
       <RibbonButton title="제목 1" onClick={() => setHeadingLevel(1)}><Heading1 size={15} /></RibbonButton>
       <RibbonButton title="제목 2" onClick={() => setHeadingLevel(2)}><Heading2 size={15} /></RibbonButton>
       <RibbonButton title="제목 3" onClick={() => setHeadingLevel(3)}><Heading3 size={15} /></RibbonButton>

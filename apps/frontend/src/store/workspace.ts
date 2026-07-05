@@ -87,6 +87,10 @@ interface WorkspaceState {
   /** 마지막 서버 저장 이후 수정 여부 */
   dirty: boolean;
   setDirty: (d: boolean) => void;
+
+  /** 목차 사이드바 표시 여부 — 리본 토글 버튼으로 전환 */
+  outlineOpen: boolean;
+  toggleOutline: () => void;
 }
 
 // 첫 진입 시 에디터는 빈 상태로 — Editor.tsx 의 안내 카드가 표시되며
@@ -224,6 +228,9 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
 
   dirty: false,
   setDirty: (d) => set({ dirty: d }),
+
+  outlineOpen: false,
+  toggleOutline: () => set((s) => ({ outlineOpen: !s.outlineOpen })),
 
   resetWorkspace: () => {
     cancelPendingDraft();

@@ -9,6 +9,7 @@ import { PreviewPane } from "@/components/preview/PreviewPane";
 import { RemoteControl } from "@/components/remote/RemoteControl";
 import { DocumentTabs } from "@/components/shell/DocumentTabs";
 import { MenuBar } from "@/components/shell/MenuBar";
+import { OutlinePanel } from "@/components/shell/OutlinePanel";
 import { RibbonToolbar } from "@/components/shell/RibbonToolbar";
 import { StatusBar } from "@/components/shell/StatusBar";
 import { TopBar } from "@/components/TopBar";
@@ -25,6 +26,7 @@ const SlideWorkspace = dynamic(
 export function Workspace() {
   const [remoteCollapsed, setRemoteCollapsed] = useState(false);
   const activeTab = useWorkspace((s) => s.activeTab);
+  const outlineOpen = useWorkspace((s) => s.outlineOpen);
 
   // 임시 저장 복구 — 에디터가 비어 있을 때만 (마운트 1회)
   useEffect(() => {
@@ -62,7 +64,12 @@ export function Workspace() {
           <RibbonToolbar />
           <div className="grid flex-1 grid-cols-12 gap-3 overflow-hidden p-3 print-root">
             <section className="no-print col-span-4 flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-              <Editor />
+              <div className="flex h-full min-h-0">
+                {outlineOpen && <OutlinePanel />}
+                <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+                  <Editor />
+                </div>
+              </div>
             </section>
             <section className="col-span-5 flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900 print-root">
               <PreviewPane />

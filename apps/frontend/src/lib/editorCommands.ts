@@ -1,7 +1,7 @@
 // CodeMirror 에디터 명령 레지스트리.
 // 리본 툴바·메뉴바·InsertVisualBar가 에디터 인스턴스에 직접 의존하지 않고
 // 이 모듈을 통해 마크다운 문법을 삽입한다.
-import type { EditorView } from "@codemirror/view";
+import { EditorView } from "@codemirror/view";
 
 let view: EditorView | null = null;
 
@@ -94,6 +94,17 @@ export function setHeadingLevel(level: number): void {
   const prefix = level > 0 ? "#".repeat(level) + " " : "";
   view.dispatch({
     changes: { from: line.from, to: line.to, insert: prefix + stripped },
+  });
+  view.focus();
+}
+
+/** 1-based 줄 번호로 스크롤 + 커서 이동. */
+export function scrollToLine(line: number): void {
+  if (!view) return;
+  const docLine = view.state.doc.line(Math.min(Math.max(1, line), view.state.doc.lines));
+  view.dispatch({
+    selection: { anchor: docLine.from },
+    effects: EditorView.scrollIntoView(docLine.from, { y: "start" }),
   });
   view.focus();
 }

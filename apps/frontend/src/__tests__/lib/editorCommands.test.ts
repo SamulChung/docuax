@@ -11,6 +11,7 @@ import {
   notifySelectionChange,
   getEditorView,
   unregisterEditorView,
+  scrollToLine,
 } from "@/lib/editorCommands";
 
 function makeView(doc: string, anchor: number, head?: number) {
@@ -103,5 +104,17 @@ describe("editorCommands", () => {
     expect(getEditorView()).toBe(b);
     unregisterEditorView(b); // 자기 자신이 등록된 상태의 unmount — 해제됨
     expect(getEditorView()).toBeNull();
+  });
+
+  it("scrollToLine — 커서를 해당 줄 시작으로 이동", () => {
+    const v = makeView("line1\nline2\nline3", 0);
+    scrollToLine(2);
+    expect(v.state.selection.main.anchor).toBe(v.state.doc.line(2).from);
+  });
+
+  it("scrollToLine — 범위 밖 줄 번호는 마지막 줄로 클램프", () => {
+    const v = makeView("line1\nline2\nline3", 0);
+    scrollToLine(99);
+    expect(v.state.selection.main.anchor).toBe(v.state.doc.line(3).from);
   });
 });

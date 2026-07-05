@@ -44,4 +44,12 @@ describe("workspace store — v3 shell state", () => {
     expect(useWorkspace.getState().currentDocId).toBeNull();
     expect(useWorkspace.getState().dirty).toBe(false);
   });
+
+  it("outlineOpen 기본값 false, toggleOutline으로 전환", () => {
+    expect(useWorkspace.getState().outlineOpen).toBe(false);
+    useWorkspace.getState().toggleOutline();
+    expect(useWorkspace.getState().outlineOpen).toBe(true);
+    useWorkspace.getState().toggleOutline();
+    expect(useWorkspace.getState().outlineOpen).toBe(false);
+  });
 });
