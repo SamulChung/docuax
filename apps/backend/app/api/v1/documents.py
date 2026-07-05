@@ -5,10 +5,11 @@
 """
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,18 +33,20 @@ class DocumentUpdate(BaseModel):
 
 
 class DocumentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     title: str
     source_md: str
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
 
 
 class DocumentListItem(BaseModel):
     id: str
     title: str
     preview: str
-    updated_at: str
+    updated_at: datetime
 
 
 def _check_size(source_md: str | None) -> None:
@@ -62,36 +65,27 @@ async def _owned(db: AsyncSession, user: User, doc_id: str) -> Document:
     return doc
 
 
-def _to_out(doc: Document) -> DocumentOut:
-    return DocumentOut(
-        id=doc.id,
-        title=doc.title,
-        source_md=doc.source_md,
-        created_at=doc.created_at.isoformat(),
-        updated_at=doc.updated_at.isoformat(),
-    )
-
-
 @router.get("/documents", response_model=list[DocumentListItem])
 async def list_documents(
     user: Annotated[User, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),
-    limit: int = 50,
-    offset: int = 0,
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
+    """내 문서 목록 — updated_at 내림차순, preview(앞 120자)만 표시."""
     rows = (
         await db.execute(
             select(Document)
             .where(Document.user_id == user.id)
             .order_by(Document.updated_at.desc())
-            .limit(min(limit, 100))
+            .limit(limit)
             .offset(offset)
         )
     ).scalars().all()
     return [
         DocumentListItem(
             id=d.id, title=d.title, preview=d.source_md[:120],
-            updated_at=d.updated_at.isoformat(),
+            updated_at=d.updated_at,
         )
         for d in rows
     ]
@@ -103,12 +97,13 @@ async def create_document(
     user: Annotated[User, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),
 ):
+    """새 문서 저장 — 2MB 초과 시 413."""
     _check_size(body.source_md)
     doc = Document(user_id=user.id, title=body.title, source_md=body.source_md)
     db.add(doc)
     await db.commit()
     await db.refresh(doc)
-    return _to_out(doc)
+    return DocumentOut.model_validate(doc)
 
 
 @router.get("/documents/{doc_id}", response_model=DocumentOut)
@@ -117,7 +112,8 @@ async def get_document(
     user: Annotated[User, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),
 ):
-    return _to_out(await _owned(db, user, doc_id))
+    """문서 열기 — 본인 문서만, 없거나 타인 소유면 404."""
+    return DocumentOut.model_validate(await _owned(db, user, doc_id))
 
 
 @router.put("/documents/{doc_id}", response_model=DocumentOut)
@@ -127,6 +123,7 @@ async def update_document(
     user: Annotated[User, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),
 ):
+    """문서 수정 — 전달된 필드(title/source_md)만 갱신."""
     _check_size(body.source_md)
     doc = await _owned(db, user, doc_id)
     if body.title is not None:
@@ -135,7 +132,7 @@ async def update_document(
         doc.source_md = body.source_md
     await db.commit()
     await db.refresh(doc)
-    return _to_out(doc)
+    return DocumentOut.model_validate(doc)
 
 
 @router.delete("/documents/{doc_id}")
@@ -144,7 +141,8 @@ async def delete_document(
     user: Annotated[User, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),
 ):
+    """문서 삭제 — 본인 문서만."""
     doc = await _owned(db, user, doc_id)
     await db.delete(doc)
     await db.commit()
-    return {"success": True}
+    return {"ok": True, "deleted_id": doc_id}

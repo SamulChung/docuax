@@ -134,7 +134,7 @@ async def test_delete_document(client: AsyncClient):
 
     r = await client.delete(f"/api/v1/documents/{doc_id}", headers=headers)
     assert r.status_code == 200
-    assert r.json() == {"success": True}
+    assert r.json() == {"ok": True, "deleted_id": doc_id}
 
     r = await client.get(f"/api/v1/documents/{doc_id}", headers=headers)
     assert r.status_code == 404
@@ -164,6 +164,14 @@ async def test_ownership_isolation(client: AsyncClient):
 
     r = await client.delete(f"/api/v1/documents/{doc_id}", headers=headers_b)
     assert r.status_code == 404
+
+
+async def test_list_negative_offset_rejected(client: AsyncClient):
+    token = await _register(client)
+    r = await client.get(
+        "/api/v1/documents", params={"offset": -1}, headers=_auth_headers(token)
+    )
+    assert r.status_code == 422
 
 
 async def test_unauthenticated(client: AsyncClient):
