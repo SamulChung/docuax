@@ -347,7 +347,7 @@ export async function executeMacro(input: {
   });
 }
 
-export function downloadUrl(documentId: string, fmt: "docx" | "hwpx" | "pdf") {
+export function downloadUrl(documentId: string, fmt: "docx" | "hwpx" | "hwp" | "pdf") {
   return `${BASE}/render/${documentId}/${fmt}`;
 }
 
