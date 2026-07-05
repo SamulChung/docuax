@@ -49,6 +49,8 @@ export function Workspace() {
           </section>
         </div>
       )}
+
+      {/* 글로벌 채팅 확장 패널 — store 의 expanded=true 일 때만 표시 */}
       <ChatPanel />
     </div>
   );
