@@ -85,18 +85,20 @@ export function TopBar() {
             title="첫화면으로 — 에디터·변환결과·AI 채팅 모두 초기화"
           >
             <LogoLockup size={28} />
-            <span className="mb-[2px] text-[10px] uppercase tracking-wide text-neutral-500">
+            {/* 태그라인 — 좁은 화면에서 세로 줄바꿈으로 깨지므로 xl 이상에서만 */}
+            <span className="mb-[2px] hidden whitespace-nowrap text-[10px] uppercase tracking-wide text-neutral-500 xl:inline">
               마크다운을 한 번에 회사 문서로
             </span>
           </Link>
         </div>
 
-        <div className="flex items-center gap-4 text-xs">
+        {/* 우측 도구 — 좁은 화면에서는 부가 항목을 단계적으로 숨김 (md→lg→xl) */}
+        <div className="flex shrink-0 items-center gap-2 whitespace-nowrap text-xs xl:gap-3">
           {/* 페르소나 모드 토글 */}
-          <div className="flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 p-0.5 dark:border-neutral-700 dark:bg-neutral-900">
+          <div className="flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 p-0.5 dark:border-neutral-700 dark:bg-neutral-900">
             <button
               onClick={() => persona !== "worker" && togglePersona()}
-              className={`rounded-full px-3 py-1 transition-all ${
+              className={`whitespace-nowrap rounded-full px-2.5 py-1 transition-all ${
                 persona === "worker"
                   ? "bg-brand text-white shadow-sm"
                   : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400"
@@ -107,7 +109,7 @@ export function TopBar() {
             </button>
             <button
               onClick={() => persona !== "heavy" && togglePersona()}
-              className={`rounded-full px-3 py-1 transition-all ${
+              className={`whitespace-nowrap rounded-full px-2.5 py-1 transition-all ${
                 persona === "heavy"
                   ? "bg-brand text-white shadow-sm"
                   : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400"
@@ -117,67 +119,68 @@ export function TopBar() {
             </button>
           </div>
 
-          {/* 두뇌 상태 + provider 즉시 전환 (admin 드롭다운) */}
-          <BrainDropdown />
+          {/* 두뇌 상태 + provider 즉시 전환 (admin 드롭다운) — md 이상 */}
+          <div className="hidden md:block">
+            <BrainDropdown />
+          </div>
 
-          {/* AI 채팅 확대 — 에디터 하단 dock 가 항상 떠있고, 이 버튼은 확장 모드 토글 */}
+          {/* AI 채팅 확대 — lg 이상 (dock 는 항상 떠있으므로 좁은 화면에선 생략 가능) */}
           <button
             onClick={() => setChatExpanded(true)}
-            className="flex items-center gap-1 rounded-full border border-neutral-200 px-2.5 py-1 font-medium text-neutral-600 transition-all hover:border-brand hover:text-brand dark:border-neutral-700 dark:text-neutral-400"
+            className="hidden items-center gap-1 rounded-full border border-neutral-200 px-2.5 py-1 font-medium text-neutral-600 transition-all hover:border-brand hover:text-brand dark:border-neutral-700 dark:text-neutral-400 lg:flex"
             title="AI 채팅 확대 — 우측 패널로 띄우기"
           >
             <MessageCircle size={12} />
             AI 확대
           </button>
 
-          <div className="flex items-center gap-1.5 text-neutral-500">
+          {/* 매크로 카운트 — 정보성이라 xl 이상에서만 */}
+          <div className="hidden items-center gap-1.5 text-neutral-500 xl:flex">
             <Activity size={12} />
             <span>매크로 {health?.macros.total ?? 0}/100</span>
           </div>
 
-          {/* 일일 사용량 — 로그인 사용자에게만 노출 */}
-          <UsageBadge />
+          {/* 일일 사용량 — 로그인 사용자에게만 노출, lg 이상 */}
+          <div className="hidden lg:block">
+            <UsageBadge />
+          </div>
 
-          {/* 자동 변환 토글 */}
+          {/* 자동 변환 토글 — md 이상 */}
           <button
             onClick={() => setAutoConvert(!autoConvert)}
-            className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
+            className={`hidden items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-all md:flex ${
               autoConvert
                 ? "border-emerald-400 bg-emerald-50 text-emerald-700 dark:border-emerald-600 dark:bg-emerald-950 dark:text-emerald-300"
                 : "border-neutral-200 text-neutral-500 hover:border-brand hover:text-brand dark:border-neutral-700"
             }`}
-            title={autoConvert ? "자동 변환 켜짐 — 입력 후 2.5초 자동 변환" : "자동 변환 꺼짐"}
+            title={autoConvert ? "자동 변환 켜짐 — 입력 후 1초 자동 변환" : "자동 변환 꺼짐"}
           >
             {autoConvert ? "⚡ 자동" : "⚡ 수동"}
           </button>
 
-          {/* 슬라이드 편집기 */}
-          <Link
-            href="/slides"
-            className="text-neutral-600 hover:text-brand"
-            title="슬라이드 편집기"
-          >
-            슬라이드
-          </Link>
-
-          {/* 배치 변환 */}
-          <Link href="/batch" className="text-neutral-600 hover:text-brand" title="배치 변환">
-            배치
-          </Link>
-
-          {/* MCP 서버 설정 */}
-          <Link href="/mcp" className="text-neutral-600 hover:text-brand" title="MCP 서버 설정">
-            MCP
-          </Link>
-
-          {/* 요금제 — 누구나 접근 */}
-          <Link
-            href="/pricing"
-            className="text-neutral-600 hover:text-brand"
-            title="요금제"
-          >
-            요금제
-          </Link>
+          {/* 보조 링크 묶음 — lg 이상에서만 (슬라이드는 탭, 나머지는 푸터로도 접근 가능) */}
+          <div className="hidden items-center gap-2 lg:flex xl:gap-3">
+            <Link
+              href="/slides"
+              className="text-neutral-600 hover:text-brand"
+              title="슬라이드 편집기"
+            >
+              슬라이드
+            </Link>
+            <Link href="/batch" className="text-neutral-600 hover:text-brand" title="배치 변환">
+              배치
+            </Link>
+            <Link href="/mcp" className="text-neutral-600 hover:text-brand" title="MCP 서버 설정">
+              MCP
+            </Link>
+            <Link
+              href="/pricing"
+              className="text-neutral-600 hover:text-brand"
+              title="요금제"
+            >
+              요금제
+            </Link>
+          </div>
 
           {/* 관리자 진입 — is_admin 사용자만 노출 */}
           {user?.is_admin && (
