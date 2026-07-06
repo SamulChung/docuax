@@ -1,7 +1,7 @@
 // 1:N 채널 내보내기 프리셋 + 실행 로직 — RemoteControl에서 추출 (출력 메뉴와 공유).
 import { downloadUrl } from "@/lib/api";
 import { copyPreviewToClipboard } from "@/lib/clipboard";
-import { executeMacroAction } from "@/lib/macroActions";
+import { executeMacroAction, NEEDS_CONVERT_MSG } from "@/lib/macroActions";
 import { useWorkspace } from "@/store/workspace";
 
 export const CHANNEL_PRESETS = [
@@ -21,7 +21,7 @@ export type ChannelId = (typeof CHANNEL_PRESETS)[number]["id"];
  */
 export async function exportToChannel(channelId: ChannelId): Promise<void> {
   if (!useWorkspace.getState().preview?.document_id) {
-    alert("먼저 변환을 실행하세요 (Ctrl+Enter)");
+    alert(NEEDS_CONVERT_MSG);
     return;
   }
   if (channelId === "instagram") {
