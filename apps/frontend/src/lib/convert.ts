@@ -23,6 +23,8 @@ export async function performConvert(opts?: { forceFast?: boolean }): Promise<vo
     return;
   }
   s.setBusy(true);
+  // 신구대조표(diff view) 기준선 — 어떤 경로(리본·메뉴·이벤트)로 변환하든 갱신
+  s.setPrevSource(s.source);
   try {
     const orgId = getOrganizationId();
     // ⚡ 빠른 변환 — fastConvert ON 또는 자동반영 이벤트(forceFast=true) 시
@@ -41,10 +43,11 @@ export async function performConvert(opts?: { forceFast?: boolean }): Promise<vo
     // eslint-disable-next-line no-console
     console.error(e);
     const msg = (e as Error).message;
-    if (msg.includes("429")) {
-      alert("요청이 너무 많아 잠시 대기가 필요합니다.\n잠시 후 다시 시도하거나, 일일 한도가 충분한 플랜으로 업그레이드하세요.");
-    } else if (msg.includes("429") || msg.includes("일일 한도") || msg.includes("daily")) {
+    // 일일 한도 초과가 429보다 구체적이므로 먼저 검사 (429 선검사 시 도달 불가였던 기존 결함 수정)
+    if (msg.includes("일일 한도") || msg.includes("daily")) {
       alert("오늘 변환 한도를 초과했습니다.\n상단 요금제에서 플랜을 업그레이드하실 수 있습니다.");
+    } else if (msg.includes("429")) {
+      alert("요청이 너무 많아 잠시 대기가 필요합니다.\n잠시 후 다시 시도하거나, 일일 한도가 충분한 플랜으로 업그레이드하세요.");
     } else {
       alert(`변환 실패: ${msg}`);
     }

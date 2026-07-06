@@ -1,5 +1,5 @@
 // 앱 전역 CustomEvent 이름 상수 — 문자열 리터럴 중복 방지.
-// 변환 트리거 이벤트: MenuBar·RibbonToolbar·Editor(디바운스)가 dispatch,
+// 변환 트리거 이벤트: RibbonToolbar·Editor(디바운스)·팔레트(convert.run)가 dispatch,
 // RemoteControl 이 상시 listen 하여 실제 변환을 실행한다.
 // (탭·접힘·페르소나와 무관하게 동작해야 하므로 패널이 아닌 RemoteControl 에서 listen —
 //  legacy "docuax:trigger-convert" 리스너와 동일한 위치·계약)

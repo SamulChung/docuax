@@ -6,6 +6,7 @@ import { Download, ChevronDown, X } from "lucide-react";
 import { downloadUrl } from "@/lib/api";
 import { downloadMarkdown } from "@/lib/download";
 import { downloadHwpWithWarnings } from "@/lib/exportActions";
+import { NEEDS_CONVERT_MSG } from "@/lib/macroActions";
 import { useWorkspace } from "@/store/workspace";
 
 const BACKEND_FORMATS = [
@@ -85,7 +86,7 @@ export function ExportMenu() {
                     ? "text-neutral-700 hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800"
                     : "cursor-not-allowed text-neutral-300 dark:text-neutral-600"
                 }`}
-                title={documentId ? undefined : "먼저 변환(Ctrl+Enter)을 실행하세요"}
+                title={documentId ? undefined : NEEDS_CONVERT_MSG}
               >
                 {hwpBusy ? "HWP 생성 중…" : label}
               </button>
@@ -100,7 +101,7 @@ export function ExportMenu() {
                     ? "text-neutral-700 hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800"
                     : "cursor-not-allowed text-neutral-300 dark:text-neutral-600"
                 }`}
-                title={documentId ? undefined : "먼저 변환(Ctrl+Enter)을 실행하세요"}
+                title={documentId ? undefined : NEEDS_CONVERT_MSG}
               >
                 {label}
               </a>

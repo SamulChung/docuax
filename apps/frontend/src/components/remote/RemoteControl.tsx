@@ -137,9 +137,7 @@ export function RemoteControl({
     // detail.forceFast 미지정 시 fastConvert store 플래그가 fast/full 을 결정.
     const onAutoConvert = (e: Event) => {
       const detail = (e as CustomEvent<{ forceFast?: boolean }>).detail || {};
-      // 신구대조표(diff) 기준 소스 기록 — 기존 WorkerConvertPanel 리스너 동작 유지
-      const s = useWorkspace.getState();
-      s.setPrevSource(s.source);
+      // 신구대조표(diff) 기준 기록은 performConvert 내부에서 일괄 처리
       handleConvert({ forceFast: detail.forceFast });
     };
     window.addEventListener(AUTO_CONVERT_EVENT, onAutoConvert);

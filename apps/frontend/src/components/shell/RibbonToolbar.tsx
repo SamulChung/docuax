@@ -69,7 +69,9 @@ export function RibbonToolbar() {
       <Divider />
       <button
         onClick={() => dispatchAutoConvert()}
-        className="flex items-center gap-1 rounded bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300"
+        disabled={busy}
+        title="LLM 분석·검토 포함 정밀 변환 (Ctrl+Enter)"
+        className="flex items-center gap-1 rounded bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 dark:bg-emerald-950/40 dark:text-emerald-300"
       >
         <Sparkles size={12} /> AI 변환·검토
       </button>
