@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, Download, FileText } from "lucide-react";
 
 import { LogoSymbol } from "@/components/Logo";
 import { downloadUrl, listMacros } from "@/lib/api";
-import { copyPreviewToClipboard } from "@/lib/clipboard";
+import { CHANNEL_PRESETS, exportToChannel } from "@/lib/channelPresets";
 import { performConvert } from "@/lib/convert";
 import { AUTO_CONVERT_EVENT } from "@/lib/events";
 import { executeMacroAction } from "@/lib/macroActions";
@@ -16,14 +16,6 @@ import { HeavyConvertPanel } from "./HeavyConvertPanel";
 import { MacroGrid } from "./MacroGrid";
 import { MACRO_PARAM_SCHEMAS, MacroParamDialog, MacroParamSchema } from "./MacroParamDialog";
 import { WorkerConvertPanel } from "./WorkerConvertPanel";
-
-const CHANNEL_PRESETS = [
-  { id: "instagram", label: "인스타그램", emoji: "📸", hint: "MZ톤 변환 후 클립보드" },
-  { id: "band",      label: "밴드·카카오", emoji: "💬", hint: "60대톤 변환 후 클립보드" },
-  { id: "email",     label: "이메일",     emoji: "📧", hint: "PDF 다운로드" },
-  { id: "blog",      label: "블로그",     emoji: "✍️", hint: "HTML+텍스트 클립보드" },
-] as const;
-type ChannelId = (typeof CHANNEL_PRESETS)[number]["id"];
 
 const TABS = [
   { id: "convert", label: "변환", short: "변환" },
@@ -86,42 +78,7 @@ export function RemoteControl({
     [preview]
   );
 
-  const handleChannelExport = useCallback(
-    async (channelId: ChannelId) => {
-      if (!useWorkspace.getState().preview?.document_id) {
-        alert("먼저 변환을 실행하세요 (Ctrl+Enter)");
-        return;
-      }
-      if (channelId === "instagram") {
-        await handleMacroExecute("G16", { target_age: "MZ" });
-        const docId = useWorkspace.getState().preview?.document_id;
-        if (!docId) return;
-        try {
-          await copyPreviewToClipboard(docId);
-          alert("인스타그램 캡션이 클립보드에 복사됐습니다 📸");
-        } catch (e) { alert(`클립보드 복사 실패: ${(e as Error).message}`); }
-      } else if (channelId === "band") {
-        await handleMacroExecute("G16", { target_age: "60대" });
-        const docId = useWorkspace.getState().preview?.document_id;
-        if (!docId) return;
-        try {
-          await copyPreviewToClipboard(docId);
-          alert("밴드·카카오용 텍스트가 클립보드에 복사됐습니다 💬");
-        } catch (e) { alert(`클립보드 복사 실패: ${(e as Error).message}`); }
-      } else if (channelId === "email") {
-        const docId = useWorkspace.getState().preview?.document_id;
-        if (docId) window.open(downloadUrl(docId, "pdf"), "_blank");
-      } else if (channelId === "blog") {
-        const docId = useWorkspace.getState().preview?.document_id;
-        if (!docId) return;
-        try {
-          await copyPreviewToClipboard(docId);
-          alert("블로그용 HTML+텍스트가 클립보드에 복사됐습니다 ✍️");
-        } catch (e) { alert(`클립보드 복사 실패: ${(e as Error).message}`); }
-      }
-    },
-    [handleMacroExecute]
-  );
+  // 채널 내보내기 로직은 lib/channelPresets 로 추출 — 상단 출력 메뉴와 공유.
 
   // 전역 단축키
   useEffect(() => {
@@ -320,7 +277,7 @@ export function RemoteControl({
                 {CHANNEL_PRESETS.map((ch) => (
                   <button
                     key={ch.id}
-                    onClick={() => void handleChannelExport(ch.id)}
+                    onClick={() => void exportToChannel(ch.id)}
                     disabled={!preview}
                     className={`flex flex-col items-start rounded-md border px-2.5 py-2 text-left transition-all disabled:opacity-40 ${
                       preview

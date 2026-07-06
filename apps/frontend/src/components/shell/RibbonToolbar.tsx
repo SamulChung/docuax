@@ -4,11 +4,12 @@ import {
   Bold, Italic, Underline, Strikethrough,
   Heading1, Heading2, Heading3, Pilcrow,
   List, ListOrdered, ListTree, Quote, Minus, Table, Link as LinkIcon,
-  Sparkles, Presentation,
+  Sparkles, Presentation, Zap,
 } from "lucide-react";
 
 import { insertBlock, setHeadingLevel, toggleListMarker, wrapSelection } from "@/lib/editorCommands";
 import { TABLE_3X3_MD } from "@/lib/commands";
+import { performConvert } from "@/lib/convert";
 import { dispatchAutoConvert } from "@/lib/events";
 import { useWorkspace } from "@/store/workspace";
 
@@ -35,6 +36,7 @@ export function RibbonToolbar() {
   const source = useWorkspace((s) => s.source);
   const setActiveTab = useWorkspace((s) => s.setActiveTab);
   const toggleOutline = useWorkspace((s) => s.toggleOutline);
+  const busy = useWorkspace((s) => s.busy);
 
   const toSlides = () => {
     try { sessionStorage.setItem("docuax_slide_prefill", source); } catch {}
@@ -70,6 +72,14 @@ export function RibbonToolbar() {
         className="flex items-center gap-1 rounded bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300"
       >
         <Sparkles size={12} /> AI 변환·검토
+      </button>
+      <button
+        onClick={() => void performConvert({ forceFast: true })}
+        disabled={busy}
+        title="LLM 분석·검토 생략 — 즉시 변환"
+        className="flex items-center gap-1 rounded bg-sky-50 px-2 py-1 text-[11px] font-semibold text-sky-700 hover:bg-sky-100 disabled:opacity-50 dark:bg-sky-950/40 dark:text-sky-300"
+      >
+        <Zap size={12} /> 한 번에 변환
       </button>
       <button
         onClick={toSlides}

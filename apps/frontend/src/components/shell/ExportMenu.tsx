@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { Download, ChevronDown, X } from "lucide-react";
 
 import { downloadUrl } from "@/lib/api";
-import { downloadBlob, downloadMarkdown, parseDocuaxWarnings } from "@/lib/download";
+import { downloadMarkdown } from "@/lib/download";
+import { downloadHwpWithWarnings } from "@/lib/exportActions";
 import { useWorkspace } from "@/store/workspace";
 
 const BACKEND_FORMATS = [
@@ -13,21 +14,6 @@ const BACKEND_FORMATS = [
   { fmt: "docx" as const, label: "Word 문서 (.docx)" },
   { fmt: "pdf" as const, label: "PDF (.pdf)" },
 ];
-
-/** Content-Disposition 에서 파일명 추출 — filename*=UTF-8''… 우선, 없으면 filename="…". */
-function filenameFromDisposition(header: string | null): string | null {
-  if (!header) return null;
-  const star = /filename\*=(?:UTF-8'')?([^;]+)/i.exec(header);
-  if (star) {
-    try {
-      return decodeURIComponent(star[1].trim().replace(/^"|"$/g, ""));
-    } catch {
-      /* 잘못된 인코딩 — 아래 filename= 로 폴백 */
-    }
-  }
-  const plain = /filename="?([^";]+)"?/i.exec(header);
-  return plain ? plain[1].trim() : null;
-}
 
 type HwpNotice =
   | { kind: "warn"; warnings: string[] }
@@ -56,20 +42,14 @@ export function ExportMenu() {
 
   const documentId = preview?.document_id ?? null;
 
-  // HWP 만 fetch 로 받는다 — 백엔드가 강등 경고를 X-Docuax-Warnings 헤더로 싣는데
-  // (render.py, 설계문서 §3.5) <a href> 다운로드로는 헤더를 읽을 수 없기 때문.
+  // HWP 다운로드·경고 파싱은 lib/exportActions 로 추출 (상단 출력 메뉴와 공유) —
+  // 여기서는 경고 배열을 받아 배너 UI 로만 표시한다.
   const handleHwpDownload = async () => {
     if (!documentId || hwpBusy) return;
     setHwpNotice(null);
     setHwpBusy(true);
     try {
-      const res = await fetch(downloadUrl(documentId, "hwp"));
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const warnings = parseDocuaxWarnings(res.headers.get("X-Docuax-Warnings"));
-      const fallbackName =
-        `${(title || "document").trim().replace(/[\\/:*?"<>|]/g, "_") || "document"}.hwp`;
-      const filename = filenameFromDisposition(res.headers.get("Content-Disposition")) ?? fallbackName;
-      downloadBlob(await res.blob(), filename);
+      const warnings = await downloadHwpWithWarnings(documentId, title);
       if (warnings.length > 0) setHwpNotice({ kind: "warn", warnings });
     } catch {
       setHwpNotice({ kind: "error" });
