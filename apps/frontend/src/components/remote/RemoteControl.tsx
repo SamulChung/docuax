@@ -9,7 +9,7 @@ import { downloadUrl, listMacros } from "@/lib/api";
 import { CHANNEL_PRESETS, exportToChannel } from "@/lib/channelPresets";
 import { performConvert } from "@/lib/convert";
 import { AUTO_CONVERT_EVENT } from "@/lib/events";
-import { executeMacroAction } from "@/lib/macroActions";
+import { executeMacroAction, NEEDS_CONVERT_MSG } from "@/lib/macroActions";
 import { useWorkspace } from "@/store/workspace";
 
 import { HeavyConvertPanel } from "./HeavyConvertPanel";
@@ -58,7 +58,7 @@ export function RemoteControl({
   const handleMacroExecute = useCallback(
     async (macroId: string, params?: Record<string, unknown>) => {
       if (!preview?.document_id) {
-        alert("먼저 변환을 실행하세요 (Ctrl+Enter)");
+        alert(NEEDS_CONVERT_MSG);
         return;
       }
       // 선택된 블록 ID 자동 첨부 — 미리보기에서 클릭으로 고른 블록들
@@ -242,7 +242,7 @@ export function RemoteControl({
                 onClick={(e) => {
                   if (!preview) {
                     e.preventDefault();
-                    alert("먼저 변환을 실행하세요");
+                    alert(NEEDS_CONVERT_MSG);
                   }
                 }}
                 className={`flex items-center justify-between rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm transition-all dark:border-neutral-800 dark:bg-neutral-900 ${

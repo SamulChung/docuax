@@ -3,13 +3,42 @@ import { executeMacro } from "@/lib/api";
 import { performConvert } from "@/lib/convert";
 import { useWorkspace } from "@/store/workspace";
 
+/** 변환 결과(preview)가 필요한 동작의 가드 문구 — 리모컨·메뉴·팔레트가 공유하는 단일 소스 */
+export const NEEDS_CONVERT_MSG = "먼저 변환(Ctrl+Enter)을 실행하세요";
+
+/**
+ * GONGMUN_POLISH — 공문 원클릭 정돈 순차 실행 시퀀스.
+ * 각 코드의 의미(backend app/macros/categories 의 name 기준):
+ * - T5  셀 너비 균등 — 선택 표·행의 셀 너비 자동 균등 분배
+ * - T16 테두리 일괄 — 외곽 굵게·내부 얇게 표준 테두리
+ * - S12 숫자 자동 우측 정렬 — 셀이 숫자면 자동 우측 정렬
+ * - S13 머리행 자동 강조 — 첫 행을 헤더 스타일로 자동 변환
+ * - B20 단락 자동 정리 — 빈 단락 정리 + 공백 정규화
+ */
+export const GONGMUN_POLISH_SEQUENCE = ["T5", "T16", "S12", "S13", "B20"] as const;
+
+/**
+ * 매크로 1건 실행 — 리모컨·상단 메뉴·리본·명령 팔레트가 공유하는 실행부.
+ *
+ * 특수 분기: GONGMUN_POLISH(순차 실행), N1~N3(프론트 점프, 백엔드 X),
+ * T1~T4(마크다운 표 골격 삽입 후 재변환), B11/B12/B14(브라우저 클립보드),
+ * 그 외는 executeMacro API 호출 후 setPreview.
+ *
+ * 파라미터 다이얼로그 판단(MACRO_PARAM_SCHEMAS)은 UI 레이어(RemoteControl 등)의 몫 —
+ * 여기 도달한 params 는 이미 확정된 값이어야 한다.
+ *
+ * @param macroId 매크로 ID (예: "T5", "N1", "GONGMUN_POLISH")
+ * @param params 매크로 파라미터 — 백엔드 execute 에 그대로 전달.
+ *   미리보기에서 블록이 선택돼 있으면 selected_block_ids 가 자동 첨부된다.
+ *   (T1~T4 는 rows/cols 를 읽고, B14 는 plain_text 를 내부에서 추가)
+ */
 export async function executeMacroAction(
   macroId: string,
   params?: Record<string, unknown>
 ): Promise<void> {
   const preview = useWorkspace.getState().preview;
   if (!preview?.document_id) {
-    alert("먼저 변환(Ctrl+Enter)을 실행하세요");
+    alert(NEEDS_CONVERT_MSG);
     return;
   }
   const setPreview = useWorkspace.getState().setPreview;
@@ -20,10 +49,9 @@ export async function executeMacroAction(
     params = { ...(params ?? {}), selected_block_ids: selectedIds };
   }
 
-  // GONGMUN_POLISH — T5·T16·S12·S13·B20 순차 실행 (공문 원클릭 정돈)
+  // GONGMUN_POLISH — 공문 원클릭 정돈 (시퀀스 정의·코드별 설명은 GONGMUN_POLISH_SEQUENCE 참고)
   if (macroId === "GONGMUN_POLISH") {
-    const seq = ["T5", "T16", "S12", "S13", "B20"];
-    for (const id of seq) {
+    for (const id of GONGMUN_POLISH_SEQUENCE) {
       const docId = useWorkspace.getState().preview?.document_id;
       if (!docId) break;
       try {
@@ -56,7 +84,7 @@ export async function executeMacroAction(
     ).join("\n");
     const tableMd = `\n\n${header}\n${sep}\n${body}\n`;
     useWorkspace.getState().setSource(cur + tableMd);
-    // 즉시 재변환
+    // 즉시 재변환 — setSource 가 store·에디터에 반영될 시간을 잠깐(50ms) 준 뒤 실행
     setTimeout(() => performConvert(), 50);
     return;
   }

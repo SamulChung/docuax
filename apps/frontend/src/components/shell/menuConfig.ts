@@ -13,7 +13,8 @@ import { saveAsNewDocument, saveCurrentDocument } from "@/lib/docActions";
 import { downloadMarkdown } from "@/lib/download";
 import { getEditorView, insertBlock, setHeadingLevel, wrapSelection } from "@/lib/editorCommands";
 import { downloadHwpWithWarnings } from "@/lib/exportActions";
-import { buildMacroEntries, MenuEntry, NEEDS_CONVERT_REASON } from "@/lib/menuBuilders";
+import { NEEDS_CONVERT_MSG } from "@/lib/macroActions";
+import { buildMacroEntries, MenuEntry } from "@/lib/menuBuilders";
 import { useWorkspace } from "@/store/workspace";
 
 export type MenuItem =
@@ -63,7 +64,7 @@ export function buildMenus(deps: MenuDeps): Record<string, MenuItem[]> {
   const docId = preview?.document_id ?? null;
   const needsConvert = hasPreview
     ? {}
-    : { disabled: true, disabledReason: NEEDS_CONVERT_REASON };
+    : { disabled: true, disabledReason: NEEDS_CONVERT_MSG };
   const needsSource = source.trim()
     ? {}
     : { disabled: true, disabledReason: "에디터 내용이 비어 있습니다" };

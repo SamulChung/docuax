@@ -1,6 +1,7 @@
 // 메뉴 항목 빌더 — 매크로 목록을 상단 메뉴 드롭다운 항목으로 변환.
 // 순수 함수로 분리해 MenuBar(메뉴 구성)와 테스트가 동일 로직을 공유한다.
 import type { MacroDescriptor } from "@/lib/api";
+import { NEEDS_CONVERT_MSG } from "@/lib/macroActions";
 
 export interface MenuEntry {
   id: string;
@@ -12,8 +13,6 @@ export interface MenuEntry {
   run: () => void;
 }
 
-/** 변환 전 매크로 비활성 사유 — 리모컨·macroActions 가드와 동일 문구 */
-export const NEEDS_CONVERT_REASON = "먼저 변환(Ctrl+Enter)을 실행하세요";
 
 /**
  * 카테고리 필터 + 그룹 라벨로 매크로를 메뉴 항목으로 변환.
@@ -35,7 +34,7 @@ export function buildMacroEntries(
         label: `${m.name} (${m.id})`,
         group,
         disabled: !hasPreview,
-        disabledReason: hasPreview ? undefined : NEEDS_CONVERT_REASON,
+        disabledReason: hasPreview ? undefined : NEEDS_CONVERT_MSG,
         run: () => onRun(m.id),
       });
     }

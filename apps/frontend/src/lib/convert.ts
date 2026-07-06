@@ -3,6 +3,16 @@ import { convertDocument } from "@/lib/api";
 import { getOrganizationId } from "@/lib/user";
 import { useWorkspace } from "@/store/workspace";
 
+/**
+ * 마크다운 → 문서 변환 실행 — 리모컨·상단 메뉴·리본·자동변환 이벤트가 공유하는 실행부.
+ *
+ * store snapshot 을 직독해 busy 재진입·빈 source 를 가드하고, 변환 결과를 setPreview 로
+ * 반영한다. 오류는 429(레이트리밋)·일일 한도·일반 실패 3종 alert 로 사용자에게 알린다.
+ *
+ * @param opts.forceFast true 면 fastConvert 설정과 무관하게 LLM 단계 2(분석)·4(검토)를
+ *   모두 skip (skip_analyze/skip_review) — 채팅 자동반영처럼 이미 LLM 을 거친 직후의
+ *   재변환 경로에서 사용. 미지정 시 store 의 fastConvert 플래그가 fast/full 을 결정.
+ */
 export async function performConvert(opts?: { forceFast?: boolean }): Promise<void> {
   // 드롭존에서 setSource(...) 직후 동기적으로 호출되는 경로가 있어
   // selector closure 가 stale 한 빈 source 를 캡처할 수 있음 — store snapshot 으로 직독.
