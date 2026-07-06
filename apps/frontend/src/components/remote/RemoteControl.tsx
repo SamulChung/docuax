@@ -5,10 +5,11 @@ import useSWR from "swr";
 import { ChevronLeft, ChevronRight, Download, FileText } from "lucide-react";
 
 import { LogoSymbol } from "@/components/Logo";
-import { convertDocument, downloadUrl, executeMacro, listMacros } from "@/lib/api";
+import { downloadUrl, listMacros } from "@/lib/api";
 import { copyPreviewToClipboard } from "@/lib/clipboard";
+import { performConvert } from "@/lib/convert";
 import { AUTO_CONVERT_EVENT } from "@/lib/events";
-import { getOrganizationId } from "@/lib/user";
+import { executeMacroAction } from "@/lib/macroActions";
 import { useWorkspace } from "@/store/workspace";
 
 import { HeavyConvertPanel } from "./HeavyConvertPanel";
@@ -50,53 +51,18 @@ export function RemoteControl({
     setActiveTab(persona === "heavy" ? "table" : "convert");
   }, [persona]);
   const preview = useWorkspace((s) => s.preview);
-  const setPreview = useWorkspace((s) => s.setPreview);
   const busy = useWorkspace((s) => s.busy);
 
   const { data: macros = [] } = useSWR("macros", () => listMacros(), {
     revalidateOnFocus: false,
   });
 
+  // 변환 실행 로직은 lib/convert.ts 로 추출 — 메뉴·리본·팔레트가 동일 로직 공유.
   const handleConvert = useCallback(async (opts?: { forceFast?: boolean }) => {
-    // 드롭존에서 setSource(...) 직후 동기적으로 호출되는 경로가 있어
-    // selector closure 가 stale 한 빈 source 를 캡처할 수 있음 — store snapshot 으로 직독.
-    const s = useWorkspace.getState();
-    if (s.busy) return;
-    if (!s.source || s.source.trim().length === 0) {
-      alert("변환할 마크다운이 비어 있습니다. 에디터에 입력하거나 .md 파일을 드롭하세요.");
-      return;
-    }
-    s.setBusy(true);
-    try {
-      const orgId = getOrganizationId();
-      // ⚡ 빠른 변환 — fastConvert ON 또는 자동반영 이벤트(forceFast=true) 시
-      //   LLM 단계 2(분석)·4(검토) 모두 skip → 1~2ms 변환
-      const fast = !!opts?.forceFast || s.fastConvert;
-      const res = await convertDocument({
-        source: s.source,
-        title: s.title || undefined,
-        persona_mode: s.persona,
-        organization_id: orgId ?? undefined,
-        skip_analyze: fast,
-        skip_review: fast,
-      });
-      s.setPreview(res.preview);
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error(e);
-      const msg = (e as Error).message;
-      if (msg.includes("429")) {
-        alert("요청이 너무 많아 잠시 대기가 필요합니다.\n잠시 후 다시 시도하거나, 일일 한도가 충분한 플랜으로 업그레이드하세요.");
-      } else if (msg.includes("429") || msg.includes("일일 한도") || msg.includes("daily")) {
-        alert("오늘 변환 한도를 초과했습니다.\n상단 요금제에서 플랜을 업그레이드하실 수 있습니다.");
-      } else {
-        alert(`변환 실패: ${msg}`);
-      }
-    } finally {
-      useWorkspace.getState().setBusy(false);
-    }
+    await performConvert(opts);
   }, []);
 
+  // 실행부는 lib/macroActions.ts 로 추출 — 파라미터 다이얼로그 판단만 UI 레이어(여기)에 유지.
   const handleMacroExecute = useCallback(
     async (macroId: string, params?: Record<string, unknown>) => {
       if (!preview?.document_id) {
@@ -115,109 +81,9 @@ export function RemoteControl({
         setPendingDialog(MACRO_PARAM_SCHEMAS[macroId]);
         return;
       }
-      // GONGMUN_POLISH — T5·T16·S12·S13·B20 순차 실행 (공문 원클릭 정돈)
-      if (macroId === "GONGMUN_POLISH") {
-        const seq = ["T5", "T16", "S12", "S13", "B20"];
-        for (const id of seq) {
-          const docId = useWorkspace.getState().preview?.document_id;
-          if (!docId) break;
-          try {
-            const res = await executeMacro({ macro_id: id, document_id: docId, params });
-            setPreview(res.preview);
-          } catch {
-            // 개별 매크로 실패해도 나머지 계속 실행
-          }
-        }
-        return;
-      }
-      // N1/N2/N3는 백엔드 호출 없이 프론트 스토어에서 직접 점프 — 즉각 반응
-      if (macroId === "N1" || macroId === "N2" || macroId === "N3") {
-        const color = macroId === "N1" ? "red" : macroId === "N2" ? "blue" : "yellow";
-        useWorkspace.getState().jumpToNext(color);
-        return;
-      }
-      // T1~T4 표 생성 — 에디터의 source 끝에 마크다운 표 골격 추가
-      // 사용자가 마크다운 에디터에서 셀을 채우게 함. 그리고 자동 재변환.
-      if (["T1", "T2", "T3", "T4"].includes(macroId)) {
-        const rows = (params?.rows as number) ?? 3;
-        const cols = (params?.cols as number) ?? 3;
-        const cur = useWorkspace.getState().source;
-        const header = "| " + Array.from({ length: cols }, (_, i) => `열 ${i + 1}`).join(" | ") + " |";
-        const sep = "| " + Array.from({ length: cols }, () => "---").join(" | ") + " |";
-        const body = Array.from({ length: rows - 1 }, () =>
-          "| " + Array.from({ length: cols }, () => "  ").join(" | ") + " |"
-        ).join("\n");
-        const tableMd = `\n\n${header}\n${sep}\n${body}\n`;
-        useWorkspace.getState().setSource(cur + tableMd);
-        // 즉시 재변환
-        setTimeout(() => handleConvert(), 50);
-        return;
-      }
-      // B11(복사)·B12(잘라내기)는 브라우저 Clipboard API로 처리
-      if (macroId === "B11" || macroId === "B12") {
-        try {
-          // 변환 결과 전체 텍스트를 클립보드에 — 운영에서는 선택 영역만
-          await navigator.clipboard.writeText(preview.plain_text);
-        } catch {
-          alert("클립보드 권한이 필요합니다");
-          return;
-        }
-        if (macroId === "B12") {
-          // 잘라내기는 백엔드도 호출 (블록 제거)
-          try {
-            const res = await executeMacro({
-              macro_id: macroId,
-              document_id: preview.document_id,
-              params,
-            });
-            setPreview(res.preview);
-          } catch {
-            /* 백엔드 실패는 무시 — 클립보드 복사는 성공 */
-          }
-        }
-        return;
-      }
-      // B14 평문 붙임 — 브라우저 클립보드에서 읽어 백엔드에 전달
-      if (macroId === "B14") {
-        try {
-          const text = await navigator.clipboard.readText();
-          const res = await executeMacro({
-            macro_id: macroId,
-            document_id: preview.document_id,
-            params: { ...params, plain_text: text },
-          });
-          setPreview(res.preview);
-        } catch {
-          alert("클립보드 읽기 권한이 필요합니다");
-        }
-        return;
-      }
-      try {
-        const res = await executeMacro({
-          macro_id: macroId,
-          document_id: preview.document_id,
-          params,
-        });
-        setPreview(res.preview);
-        // 변경된 블록 표시 — 선택된 블록을 잠깐 강조
-        const changedIds = (params?.selected_block_ids as string[] | undefined) ?? [];
-        if (changedIds.length > 0) {
-          useWorkspace.getState().setRecentlyChanged(changedIds);
-        }
-        // R9 결과는 alert로 일단 노출 (추후 사이드 패널로)
-        if (macroId === "R9" && res.result?.score !== undefined) {
-          const score = res.result.score as number;
-          const suggestions = (res.result.suggestions as string[] | undefined) ?? [];
-          alert(
-            `기관 양식 일치도: ${(score * 100).toFixed(0)}점\n\n` +
-              (suggestions.length ? `개선 제안:\n- ${suggestions.join("\n- ")}` : "개선 사항 없음")
-          );
-        }
-      } catch (e) {
-        alert(`매크로 실행 실패: ${(e as Error).message}`);
-      }
+      await executeMacroAction(macroId, params);
     },
-    [preview, setPreview]
+    [preview]
   );
 
   const handleChannelExport = useCallback(

@@ -4,9 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import useSWR from "swr";
 
-import { listMacros, executeMacro } from "@/lib/api";
+import { listMacros } from "@/lib/api";
 import { filterCommands, getStaticCommands } from "@/lib/commands";
 import type { Command } from "@/lib/commands";
+import { executeMacroAction } from "@/lib/macroActions";
 import { useWorkspace } from "@/store/workspace";
 
 export function CommandPalette({ onClose }: { onClose: () => void }) {
@@ -28,11 +29,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         label: `${m.id} — ${m.name}`,
         keywords: `macro 매크로 ${m.description ?? ""}`,
         run: () => {
-          const s = useWorkspace.getState();
-          if (!s.preview) { alert("먼저 변환(Ctrl+Enter)을 실행하세요"); return; }
-          void executeMacro({ document_id: s.preview.document_id, macro_id: m.id })
-            .then((r) => s.setPreview(r.preview))
-            .catch(() => alert("매크로 실행에 실패했습니다"));
+          void executeMacroAction(m.id);
         },
       })),
     [macros],
