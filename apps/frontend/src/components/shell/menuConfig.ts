@@ -15,7 +15,6 @@ import { getEditorView, insertBlock, setHeadingLevel, wrapSelection } from "@/li
 import { downloadHwpWithWarnings } from "@/lib/exportActions";
 import { NEEDS_CONVERT_MSG } from "@/lib/macroActions";
 import { buildMacroEntries, MenuEntry } from "@/lib/menuBuilders";
-import { useWorkspace } from "@/store/workspace";
 
 export type MenuItem =
   | {
@@ -38,6 +37,8 @@ export interface MenuDeps {
   openPicker: () => void;
   /** 매크로 실행 — 파라미터 필요 시 MenuBar 가 다이얼로그를 띄운다 */
   runMacro: (macroId: string) => void;
+  /** 검토 표시 점프 — MenuBar 가 store 액션을 주입 (menuConfig 는 store 직접 접근 금지) */
+  jumpToNext: (color: "red" | "blue" | "yellow") => void;
 }
 
 /** MenuEntry(menuBuilders) → MenuItem 어댑터 */
@@ -59,7 +60,7 @@ const withEditor =
 
 /** 메뉴 순서: 파일 편집 서식 삽입 표 글자 이동 검토 출력 도구 */
 export function buildMenus(deps: MenuDeps): Record<string, MenuItem[]> {
-  const { source, title, preview, macros, resetWorkspace, setActiveTab, openPicker, runMacro } = deps;
+  const { source, title, preview, macros, resetWorkspace, setActiveTab, openPicker, runMacro, jumpToNext } = deps;
   const hasPreview = !!preview;
   const docId = preview?.document_id ?? null;
   const needsConvert = hasPreview
@@ -76,9 +77,18 @@ export function buildMenus(deps: MenuDeps): Record<string, MenuItem[]> {
     n: number | undefined,
   ): MenuItem => ({
     label: n !== undefined ? `${base} (${n}곳)` : base,
-    action: () => useWorkspace.getState().jumpToNext(color),
+    action: () => jumpToNext(color),
     ...needsConvert,
   });
+
+  // 이동 매크로 (N4~N10) — N1~N3 는 위 점프 항목과 중복이라 제외.
+  // 백엔드에 N4+ 가 없으면 빈 배열 → divider·그룹 헤더 자체가 렌더되지 않음.
+  const navMacroEntries = buildMacroEntries(
+    macros.filter((m) => !["N1", "N2", "N3"].includes(m.id)),
+    [{ cat: "N", group: "이동 매크로" }],
+    hasPreview,
+    runMacro,
+  );
 
   const openDownload = (fmt: "hwpx" | "docx" | "pdf") => () => {
     if (docId) window.open(downloadUrl(docId, fmt), "_blank");
@@ -147,6 +157,9 @@ export function buildMenus(deps: MenuDeps): Record<string, MenuItem[]> {
       jumpItem("빨간 지점으로", "red", counts?.red),
       jumpItem("파란 지점으로", "blue", counts?.blue),
       jumpItem("노란 지점으로", "yellow", counts?.yellow),
+      ...(navMacroEntries.length > 0
+        ? ["divider" as const, ...toItems(navMacroEntries)]
+        : []),
     ],
     검토: [
       { label: "AI 변환·검토 실행 (Ctrl+Enter)", action: () => void performConvert() },

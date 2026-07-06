@@ -70,6 +70,8 @@ export function RemoteControl({
       // (선택된 블록만 있을 때는 다이얼로그 X — 그냥 실행)
       const hasOnlySelection = params && Object.keys(params).length === 1 && "selected_block_ids" in params;
       if (MACRO_PARAM_SCHEMAS[macroId] && (!params || hasOnlySelection)) {
+        // 알려진 위험 수용 — MenuBar 도 자체 다이얼로그를 마운트해 이론상 동시 오픈 가능.
+        // 스택 시 MenuBar 쪽(z-[60])이 위로 오도록 결정적 순서를 부여해 둠.
         setPendingDialog(MACRO_PARAM_SCHEMAS[macroId]);
         return;
       }
@@ -128,8 +130,9 @@ export function RemoteControl({
     };
     window.addEventListener("docuax:trigger-convert", onAiConvert);
 
-    // AUTO_CONVERT_EVENT — MenuBar(도구>변환 실행)·RibbonToolbar(AI 변환·검토)·Editor(1초 debounce)가
-    // dispatch. 예전에는 WorkerConvertPanel 에만 리스너가 있어 헤비유저 모드·리모컨 접힘·타 탭에서
+    // AUTO_CONVERT_EVENT — RibbonToolbar(AI 변환·검토)·Editor(1초 debounce)가 dispatch.
+    // (상단 검토 메뉴는 performConvert 를 직접 호출하므로 이 이벤트를 쓰지 않는다.)
+    // 예전에는 WorkerConvertPanel 에만 리스너가 있어 헤비유저 모드·리모컨 접힘·타 탭에서
     // 무시됐다 — legacy trigger-convert 와 같은 위치(여기)에서 상시 listen 한다.
     // detail.forceFast 미지정 시 fastConvert store 플래그가 fast/full 을 결정.
     const onAutoConvert = (e: Event) => {

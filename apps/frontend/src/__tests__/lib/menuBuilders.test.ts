@@ -59,4 +59,19 @@ describe("buildMacroEntries", () => {
   it("빈 매크로 목록 → []", () => {
     expect(buildMacroEntries([], [{ cat: "T", group: "표 매크로" }], true, jest.fn())).toEqual([]);
   });
+
+  it("매크로가 없는 카테고리는 항목을 만들지 않는다 — 빈 그룹 헤더가 생기지 않도록", () => {
+    // 이동 메뉴처럼 특정 id 를 필터한 뒤 카테고리가 비면 해당 그룹 항목 0개여야 함
+    const entries = buildMacroEntries(
+      MACROS,
+      [
+        { cat: "N", group: "이동 매크로" },
+        { cat: "T", group: "표 매크로" },
+      ],
+      true,
+      jest.fn(),
+    );
+    expect(entries.map((e) => e.id)).toEqual(["T1", "T2"]);
+    expect(entries.every((e) => e.group === "표 매크로")).toBe(true);
+  });
 });

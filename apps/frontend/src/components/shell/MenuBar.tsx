@@ -40,6 +40,8 @@ export function MenuBar() {
   const runMacro = (macroId: string) => {
     const schema = MACRO_PARAM_SCHEMAS[macroId];
     if (schema) {
+      // 알려진 위험 수용 — RemoteControl 도 자체 다이얼로그를 마운트해 이론상 동시 오픈 가능.
+      // 스택 시 MenuBar 쪽이 위로 오도록 아래 렌더에서 z-[60] 컨텍스트를 부여한다.
       setPendingDialog(schema);
       return;
     }
@@ -55,6 +57,7 @@ export function MenuBar() {
     setActiveTab,
     openPicker: () => setPickerOpen(true),
     runMacro,
+    jumpToNext: (color) => useWorkspace.getState().jumpToNext(color),
   });
 
   return (
@@ -108,6 +111,12 @@ export function MenuBar() {
                   </div>
                 );
               })}
+              {/* 긴 메뉴(12개 이상) 하단 고정 힌트 — 명령 팔레트로 빠른 검색 */}
+              {items.filter((it) => it !== "divider").length >= 12 && (
+                <div className="sticky bottom-0 border-t border-neutral-100 bg-white px-3 py-1 text-[10px] text-neutral-400 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-500">
+                  빠른 검색: Ctrl+K
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -117,15 +126,19 @@ export function MenuBar() {
       </div>
       {pickerOpen && <DocumentPicker onClose={() => setPickerOpen(false)} />}
       {pendingDialog && (
-        <MacroParamDialog
-          schema={pendingDialog}
-          onCancel={() => setPendingDialog(null)}
-          onConfirm={(params) => {
-            const macroId = pendingDialog.macroId;
-            setPendingDialog(null);
-            void executeMacroAction(macroId, params);
-          }}
-        />
+        // z-[60] 스태킹 컨텍스트 — RemoteControl 다이얼로그(z-50)와 동시 오픈되는
+        // 좁은 경로에서 MenuBar 쪽이 결정적으로 위에 오도록.
+        <div className="relative z-[60]">
+          <MacroParamDialog
+            schema={pendingDialog}
+            onCancel={() => setPendingDialog(null)}
+            onConfirm={(params) => {
+              const macroId = pendingDialog.macroId;
+              setPendingDialog(null);
+              void executeMacroAction(macroId, params);
+            }}
+          />
+        </div>
       )}
     </div>
   );
