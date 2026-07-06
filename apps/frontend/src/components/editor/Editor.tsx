@@ -84,7 +84,8 @@ export function Editor() {
           빈 상태일 때는 textarea 위에 안내 카드 오버레이 — 클릭 시 자동으로 textarea 포커스 */}
       <div className="relative flex-1 overflow-hidden">
         <div className="absolute inset-0">
-          <MarkdownEditor placeholderText="① 템플릿 선택 → ② AI 채팅에 요청 → ③ 변환" />
+          {/* 플레이스홀더 없음 — 빈 상태 안내는 아래 오버레이 카드가 담당 (텍스트 겹침 방지) */}
+          <MarkdownEditor />
         </div>
         {source.length === 0 && (
           <div

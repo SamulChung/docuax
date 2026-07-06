@@ -78,7 +78,12 @@ export function Workspace() {
         <div className="flex flex-1 flex-col overflow-hidden print-root">
           <RibbonToolbar />
           <div className="grid flex-1 grid-cols-12 gap-3 overflow-hidden p-3 print-root">
-            <section className="no-print col-span-4 flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+            {/* 리모컨 접힘 시 에디터·미리보기가 남는 폭을 나눠 가짐 (12칸 합 유지) */}
+            <section
+              className={`no-print flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900 ${
+                remoteCollapsed ? "col-span-6" : "col-span-5"
+              }`}
+            >
               <div className="flex h-full min-h-0">
                 {outlineOpen && <OutlinePanel />}
                 <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -86,7 +91,7 @@ export function Workspace() {
                 </div>
               </div>
             </section>
-            <section className="col-span-5 flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900 print-root">
+            <section className={`flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900 print-root ${remoteCollapsed ? "col-span-5" : "col-span-4"}`}>
               <PreviewPane />
             </section>
             <section
