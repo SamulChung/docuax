@@ -39,7 +39,7 @@ export function WorkerConvertPanel({ onConvert, onMacro, busy }: WorkerConvertPa
         onClick={() => { setPrevSource(source); onConvert({ forceFast: true }); }}
         disabled={busy || source.length === 0}
         className="flex w-full items-center justify-center gap-2 rounded-md bg-brand py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-brand-soft disabled:cursor-not-allowed disabled:opacity-50"
-        title={source.length === 0 ? "에디터에 마크다운을 입력하거나 .md 파일을 드롭하세요" : "마크다운 → DOCX 즉시 변환"}
+        title={source.length === 0 ? "에디터에 마크다운을 입력하거나 왼쪽 에디터에 파일을 드롭하세요" : "마크다운 → DOCX 즉시 변환"}
       >
         <Zap size={14} />
         한 번에 변환
