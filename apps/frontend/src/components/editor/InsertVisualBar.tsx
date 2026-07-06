@@ -661,7 +661,8 @@ export function InsertVisualBar({ textareaRef, onInsert }: InsertVisualBarProps 
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1 border-b border-neutral-200 bg-neutral-50/60 px-3 py-1.5 dark:border-neutral-800 dark:bg-neutral-900/40">
+    // 한 줄 고정 + 가로 스크롤 — 두 줄로 감기면 에디터 세로 공간을 잠식하므로
+    <div className="flex flex-nowrap items-center gap-1 overflow-x-auto border-b border-neutral-200 bg-neutral-50/60 px-3 py-1.5 dark:border-neutral-800 dark:bg-neutral-900/40">
       <span
         className="mr-1 shrink-0 whitespace-nowrap text-[10px] font-semibold text-neutral-500 dark:text-neutral-400"
         title="삽입 위치 = 에디터의 현재 커서 위치. 원하는 자리에 커서를 두고 누르세요."

@@ -67,7 +67,8 @@ export function Workspace() {
   }, []);
 
   return (
-    <div className="flex h-[calc(100vh-300px)] min-h-[640px] flex-col print-root">
+    // 워드프로세서는 화면을 가득 채운다 — 48px 는 인증 배너 여유분, 푸터는 스크롤 아래로
+    <div className="flex h-[calc(100vh-48px)] min-h-[640px] flex-col print-root">
       <TopBar />
       <MenuBar />
       <DocumentTabs />

@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  ChevronDown,
+  ChevronUp,
   ClipboardCopy,
   Expand,
   FileInput,
@@ -41,6 +43,17 @@ export function ChatDock() {
   const taRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
+  // 메시지 영역 접기 — 기본 접힘(에디터 세로 공간 확보). 전송·prefill 시 자동 펼침.
+  const [open, setOpen] = useState<boolean>(() => {
+    try { return localStorage.getItem("guelzip_chatdock_open") === "true"; } catch { return false; }
+  });
+  const toggleOpen = () => {
+    setOpen((v) => {
+      try { localStorage.setItem("guelzip_chatdock_open", String(!v)); } catch {}
+      return !v;
+    });
+  };
+
   // 새 메시지 시 자동 스크롤
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
@@ -67,6 +80,8 @@ export function ChatDock() {
     const v = ta.value;
     if (!v.trim() || busy) return;
     ta.value = "";
+    // 응답을 볼 수 있도록 접힘 상태면 자동 펼침
+    if (!open) toggleOpen();
     await send(v);
   };
 
@@ -137,10 +152,18 @@ export function ChatDock() {
           >
             <Expand size={11} />
           </button>
+          <button
+            onClick={toggleOpen}
+            className="shrink-0 rounded p-1 text-neutral-400 hover:bg-neutral-200 hover:text-brand dark:hover:bg-neutral-700"
+            title={open ? "메시지 영역 접기 — 에디터 공간 확보" : "메시지 영역 펼치기"}
+          >
+            {open ? <ChevronDown size={11} /> : <ChevronUp size={11} />}
+          </button>
         </div>
       </div>
 
-      {/* 메시지 영역 — 약 5줄 분량 (140px) */}
+      {/* 메시지 영역 — 약 5줄 분량 (140px). 접힘 시 숨김(입력줄은 유지) */}
+      {open && (
       <div
         ref={listRef}
         className="overflow-y-auto bg-white px-2.5 py-1.5 dark:bg-neutral-950"
@@ -171,6 +194,7 @@ export function ChatDock() {
           </div>
         )}
       </div>
+      )}
 
       {/* 에러 */}
       {error && (
