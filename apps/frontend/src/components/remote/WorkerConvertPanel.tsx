@@ -1,12 +1,10 @@
 "use client";
 
-import { useCallback } from "react";
 import { Download, FileText, Zap } from "lucide-react";
 
 import { downloadUrl } from "@/lib/api";
 import { useWorkspace } from "@/store/workspace";
 
-import { MarkdownDropZone } from "./MarkdownDropZone";
 import { ReviewJump } from "./ReviewJump";
 
 export interface WorkerConvertPanelProps {
@@ -17,7 +15,7 @@ export interface WorkerConvertPanelProps {
 
 /**
  * 워커 모드 변환 패널 — 마크다운 → DOCX 빠른 출력에 특화.
- * - 큰 드래그&드롭존, '한 번에 변환' 큰 버튼
+ * - '한 번에 변환' 큰 버튼 (파일 드롭은 에디터 영역으로 통합)
  * - 빠른 변환 항상 ON (LLM 분석·검토 생략, ~5ms)
  * - 다운로드는 DOCX 강조, HWPX/PDF 는 작게
  */
@@ -26,19 +24,15 @@ export function WorkerConvertPanel({ onConvert, onMacro, busy }: WorkerConvertPa
   const preview = useWorkspace((s) => s.preview);
   const setPrevSource = useWorkspace((s) => s.setPrevSource);
 
-  const handleDocxDirect = useCallback(() => {
-    // 드롭 직후 자동 변환 — 빠른 변환 강제
-    setPrevSource(source);
-    onConvert({ forceFast: true });
-  }, [onConvert, setPrevSource, source]);
-
   // AUTO_CONVERT_EVENT 리스너는 RemoteControl 로 이동 (F1) —
   // 이 패널은 persona/탭/접힘에 따라 unmount 되므로 여기서 listen 하면 이벤트가 유실된다.
 
   return (
     <div className="space-y-3 p-3">
-      {/* 드롭존 — 워커는 크고 두드러지게 */}
-      <MarkdownDropZone variant="prominent" onAfterLoad={handleDocxDirect} />
+      {/* 드롭존은 에디터로 통합 (드롭존 통합) — 여기서는 안내만 */}
+      <p className="rounded border border-dashed border-neutral-300 px-2.5 py-1.5 text-[10px] text-neutral-500 dark:border-neutral-700">
+        파일은 왼쪽 에디터에 드롭하세요 (HWP·DOCX·MD)
+      </p>
 
       {/* 한 번에 변환 버튼 — 워커의 메인 동작 */}
       <button
@@ -113,7 +107,7 @@ export function WorkerConvertPanel({ onConvert, onMacro, busy }: WorkerConvertPa
           <div className="rounded-md bg-emerald-50 p-2.5 text-[10px] text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
             <div className="mb-1.5 font-semibold">💼 워커 모드 워크플로우</div>
             <ol className="ml-3 list-decimal space-y-0.5">
-              <li>.md 파일 드롭(또는 에디터 입력) → 자동 DOCX</li>
+              <li>에디터에 입력(또는 파일 드롭) → 한 번에 변환</li>
               <li>
                 <kbd className="rounded bg-white/60 px-1">Ctrl+Shift+D</kbd> 로 다운로드
               </li>

@@ -1,13 +1,11 @@
 "use client";
 
-import { useCallback } from "react";
 import { Download, FileText, Sparkles, Zap } from "lucide-react";
 
 import { downloadUrl } from "@/lib/api";
 import { OrganizationPicker } from "@/components/organizations/OrganizationPicker";
 import { useWorkspace } from "@/store/workspace";
 
-import { MarkdownDropZone } from "./MarkdownDropZone";
 import { ReviewJump } from "./ReviewJump";
 
 export interface HeavyConvertPanelProps {
@@ -29,19 +27,15 @@ export function HeavyConvertPanel({ onConvert, onMacro, busy }: HeavyConvertPane
   const source = useWorkspace((s) => s.source);
   const setPrevSource = useWorkspace((s) => s.setPrevSource);
 
-  // 드롭 후 자동 변환 — 헤비는 정밀 변환이 기본이라 forceFast 사용 안 함
-  const onAfterDrop = useCallback(() => {
-    setPrevSource(source);
-    onConvert();
-  }, [onConvert, setPrevSource, source]);
-
   return (
     <div className="space-y-3 p-3">
       {/* 조직 양식 — 헤비의 핵심 */}
       <OrganizationPicker />
 
-      {/* 드롭존 — 헤비는 컴팩트(에디터가 메인) */}
-      <MarkdownDropZone variant="compact" onAfterLoad={onAfterDrop} />
+      {/* 드롭존은 에디터로 통합 (드롭존 통합) — 여기서는 안내만 */}
+      <p className="rounded border border-dashed border-neutral-300 px-2.5 py-1.5 text-[10px] text-neutral-500 dark:border-neutral-700">
+        파일은 왼쪽 에디터에 드롭하세요 (HWP·DOCX·MD)
+      </p>
 
       <button
         onClick={() => { setPrevSource(source); onConvert(); }}

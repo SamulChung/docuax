@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { BookOpen, MessageCircle, Sparkles, Wand2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { BookOpen, FileUp, MessageCircle, Sparkles, Wand2 } from "lucide-react";
 
 import { ChatDock } from "@/components/chat/ChatDock";
 import { FormFillPanel } from "@/components/editor/FormFillPanel";
-import { HwpDropZone } from "@/components/editor/HwpDropZone";
+import { HwpDropZone, importFileToEditor } from "@/components/editor/HwpDropZone";
 import { InsertVisualBar } from "@/components/editor/InsertVisualBar";
 import { MarkdownEditor } from "@/components/editor/MarkdownEditor";
 import { PromptLibrary } from "@/components/prompts/PromptLibrary";
@@ -21,6 +21,9 @@ export function Editor() {
   const autoConvert = useWorkspace((s) => s.autoConvert);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [promptsOpen, setPromptsOpen] = useState(false);
+  // 에디터 전체 드롭 타겟 — 자식 요소 dragleave 로 깜빡이지 않게 depth 카운터 사용
+  const [dropping, setDropping] = useState(false);
+  const dragDepth = useRef(0);
 
   useEffect(() => {
     if (!autoConvert || !source.trim()) return;
@@ -81,13 +84,48 @@ export function Editor() {
       </div>
 
       {/* 마크다운 입력 영역 — flex-1, 채팅 dock 위에 위치.
-          빈 상태일 때는 textarea 위에 안내 카드 오버레이 — 클릭 시 자동으로 textarea 포커스 */}
-      <div className="relative flex-1 overflow-hidden">
+          빈 상태일 때는 textarea 위에 안내 카드 오버레이 — 클릭 시 자동으로 textarea 포커스.
+          영역 전체가 파일 드롭 타겟 (HWP·DOCX·MD → importFileToEditor) */}
+      <div
+        className={`relative flex-1 overflow-hidden ${dropping ? "ring-2 ring-inset ring-brand/50" : ""}`}
+        onDragEnter={(e) => {
+          e.preventDefault();
+          dragDepth.current += 1;
+          setDropping(true);
+        }}
+        onDragOver={(e) => e.preventDefault()}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          dragDepth.current = Math.max(0, dragDepth.current - 1);
+          if (dragDepth.current === 0) setDropping(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          dragDepth.current = 0;
+          setDropping(false);
+          const file = e.dataTransfer.files[0];
+          if (!file) return;
+          importFileToEditor(file).catch((err: unknown) => {
+            alert(err instanceof Error ? err.message : "파일 처리 중 오류가 발생했습니다");
+          });
+        }}
+      >
         <div className="absolute inset-0">
           {/* 플레이스홀더 없음 — 빈 상태 안내는 아래 오버레이 카드가 담당 (텍스트 겹침 방지) */}
           <MarkdownEditor />
         </div>
-        {source.length === 0 && (
+        {dropping && (
+          <div
+            className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-brand/5 p-4"
+            aria-hidden
+          >
+            <div className="flex items-center gap-2 rounded-lg border-2 border-dashed border-brand bg-white/95 px-5 py-3 text-sm font-semibold text-brand shadow-lg dark:bg-neutral-900/95">
+              <FileUp size={16} />
+              여기에 파일을 놓으세요 (HWP·DOCX·MD)
+            </div>
+          </div>
+        )}
+        {source.length === 0 && !dropping && (
           <div
             className="pointer-events-none absolute inset-0 flex items-center justify-center p-4"
             aria-hidden

@@ -25,7 +25,8 @@ const SlideWorkspace = dynamic(
 );
 
 export function Workspace() {
-  const [remoteCollapsed, setRemoteCollapsed] = useState(false);
+  // 리모컨 기본 접힘 — 입력·미리보기 확대 (메뉴 개편으로 매크로는 상단 메뉴에서 접근 가능)
+  const [remoteCollapsed, setRemoteCollapsed] = useState(true);
   const activeTab = useWorkspace((s) => s.activeTab);
   const outlineOpen = useWorkspace((s) => s.outlineOpen);
   const paletteOpen = useWorkspace((s) => s.paletteOpen);
