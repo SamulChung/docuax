@@ -9,7 +9,7 @@
 5. 애플리케이션 유형: **웹 애플리케이션**
 6. 승인된 리디렉션 URI 추가:
    - 개발: `http://localhost:8000/api/v1/auth/google/callback`
-   - 운영(Railway): `https://docuax-production.up.railway.app/api/v1/auth/google/callback`
+   - 운영(Railway): `https://docuax-production-f113.up.railway.app/api/v1/auth/google/callback`
 7. 클라이언트 ID와 클라이언트 보안 비밀번호 복사
 
 ## 2. 환경변수 설정
@@ -25,7 +25,7 @@ GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
 Railway 대시보드 → Variables에 추가:
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
-- `GOOGLE_REDIRECT_URI=https://docuax-production.up.railway.app/api/v1/auth/google/callback`
+- `GOOGLE_REDIRECT_URI=https://docuax-production-f113.up.railway.app/api/v1/auth/google/callback`
 
 ## 3. OAuth 동의 화면 설정
 

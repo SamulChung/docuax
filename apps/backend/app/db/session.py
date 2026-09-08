@@ -63,6 +63,64 @@ engine = create_async_engine(_db_url, **_engine_kwargs)
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
 
+def _default_literal(column) -> str | None:
+    """컬럼의 파이썬 스칼라 default를 SQL 리터럴로 변환. 변환 불가(callable, dict 등)면 None."""
+    default = column.default
+    if default is None or not getattr(default, "is_scalar", False):
+        return None
+    value = default.arg
+    if isinstance(value, bool):
+        return "TRUE" if value else "FALSE"  # SQLite도 1/0 별칭으로 지원
+    if isinstance(value, (int, float)):
+        return repr(value)
+    if isinstance(value, str):
+        escaped = value.replace("'", "''")
+        return f"'{escaped}'"
+    return None
+
+
+def _add_missing_columns(conn) -> None:
+    """create_all이 건너뛰는 기존 테이블에 모델의 누락 컬럼을 ALTER TABLE로 추가.
+
+    additive 변경(컬럼·인덱스 추가)만 처리하는 경량 부트스트랩.
+    컬럼 삭제·이름 변경·타입 변경은 다루지 않는다 — 그 시점엔 Alembic 도입 필요.
+    NOT NULL 컬럼은 스칼라 default가 있을 때만 NOT NULL DEFAULT로 추가하고,
+    default를 리터럴로 못 만들면 nullable로 추가한다 (기존 행 때문에 NOT NULL 불가).
+    """
+    from sqlalchemy import inspect as sa_inspect
+
+    inspector = sa_inspect(conn)
+    existing_tables = set(inspector.get_table_names())
+    preparer = conn.dialect.identifier_preparer
+
+    for table in Base.metadata.sorted_tables:
+        if table.name not in existing_tables:
+            continue  # 새 테이블은 create_all이 생성
+        existing_cols = {c["name"] for c in inspector.get_columns(table.name)}
+        added: list[str] = []
+        for column in table.columns:
+            if column.name in existing_cols:
+                continue
+            col_type = column.type.compile(conn.dialect)
+            ddl = (
+                f"ALTER TABLE {preparer.quote(table.name)} "
+                f"ADD COLUMN {preparer.quote(column.name)} {col_type}"
+            )
+            literal = _default_literal(column)
+            if literal is not None:
+                ddl += f" DEFAULT {literal}"
+                if not column.nullable:
+                    ddl += " NOT NULL"
+            conn.exec_driver_sql(ddl)
+            added.append(column.name)
+        if added:
+            log.info("스키마 부트스트랩: 누락 컬럼 추가", table=table.name, columns=added)
+            # 새 컬럼에 걸린 인덱스 생성 (예: users.google_id unique 인덱스)
+            for index in table.indexes:
+                if any(c.name in added for c in index.columns):
+                    index.create(conn, checkfirst=True)
+
+
 async def init_db() -> None:
     """앱 시작 시 호출. 운영에서는 Alembic 마이그레이션 사용 권장."""
     # 모델 import — 메타데이터에 등록되도록
@@ -81,6 +139,14 @@ async def init_db() -> None:
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    # 구버전 DB(예: email_verified 없는 users)에 누락 컬럼 보강 — 멱등
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(_add_missing_columns)
+    except Exception:  # noqa: BLE001
+        log.exception(
+            "스키마 부트스트랩 실패 — 로컬 SQLite라면 docuax.db 삭제 후 재부팅으로 복구 가능"
+        )
     log.info("DB 초기화 완료", url=_settings.database_url)
 
 

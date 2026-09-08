@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-const BACKEND = process.env.NEXT_PUBLIC_API_BASE || "https://docuax-production.up.railway.app";
+const BACKEND = process.env.NEXT_PUBLIC_API_BASE || "https://docuax-production-f113.up.railway.app";
 
 const nextConfig = {
   reactStrictMode: true,

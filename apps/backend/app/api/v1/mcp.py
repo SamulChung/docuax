@@ -16,7 +16,7 @@ def _base_url() -> str:
         val = getattr(s, attr, None)
         if val:
             return str(val).rstrip("/")
-    return "https://docuax-production.up.railway.app"
+    return "https://docuax-production-f113.up.railway.app"
 
 
 @router.get("/mcp/spec")
