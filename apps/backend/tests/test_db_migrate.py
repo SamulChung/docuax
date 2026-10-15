@@ -4,13 +4,19 @@
 구버전 docuax.db(users.email_verified, google_id 없음)로 부팅하면
 /api/v1/auth/register가 sqlite3.OperationalError로 500을 냈다.
 """
+import asyncio
 import sqlite3
+from unittest.mock import AsyncMock
 
 import pytest
-from sqlalchemy import inspect, select, text
-from sqlalchemy.ext.asyncio import create_async_engine
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import inspect, select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 import app.models  # noqa: F401 — Base.metadata에 테이블 등록
+from app.db import get_db
+from app.db import session as db_session
 from app.db.session import _add_missing_columns
 from app.models import User
 
@@ -148,3 +154,119 @@ async def test_missing_table_is_ignored(tmp_path):
     }
     conn.close()
     assert "users" not in tables
+
+
+@pytest.fixture
+async def startup_db(old_db_path, monkeypatch):
+    engine = create_async_engine(f"sqlite+aiosqlite:///{old_db_path}")
+    monkeypatch.setattr(db_session, "engine", engine)
+    try:
+        yield engine
+    finally:
+        await engine.dispose()
+
+
+async def test_startup_failure_is_not_swallowed(startup_db, monkeypatch, old_db_path):
+    def fail_after_ddl(conn):
+        conn.exec_driver_sql("ALTER TABLE users ADD COLUMN incomplete TEXT")
+        raise RuntimeError("migration interrupted")
+
+    monkeypatch.setattr(db_session, "_add_missing_columns", fail_after_ddl)
+    with pytest.raises(RuntimeError, match="migration interrupted"):
+        await db_session.init_db()
+
+    # SQLite DDL must roll back with the failed startup, preserving existing data.
+    with sqlite3.connect(old_db_path) as conn:
+        assert "incomplete" not in {row[1] for row in conn.execute("PRAGMA table_info(users)")}
+        assert conn.execute("SELECT email FROM users").fetchall() == [("old@example.com",)]
+
+
+async def test_repairs_index_after_interrupted_migration(old_db_path):
+    with sqlite3.connect(old_db_path) as conn:
+        conn.execute("ALTER TABLE users ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT 0")
+        conn.execute("ALTER TABLE users ADD COLUMN google_id VARCHAR(120)")
+
+    await _migrate(old_db_path)
+
+    with sqlite3.connect(old_db_path) as conn:
+        assert any(row[1] == "ix_users_google_id" and row[2] for row in conn.execute("PRAGMA index_list(users)"))
+
+
+async def test_duplicate_google_ids_block_startup(startup_db, old_db_path):
+    with sqlite3.connect(old_db_path) as conn:
+        conn.execute("ALTER TABLE users ADD COLUMN google_id VARCHAR(120)")
+        conn.execute("UPDATE users SET google_id = 'duplicate'")
+        conn.execute(
+            "INSERT INTO users (id,email,name,plan,persona_mode,password_hash,"
+            "opt_in_training,opt_in_marketing,created_at,google_id) "
+            "SELECT 'u2','other@example.com',name,plan,persona_mode,password_hash,"
+            "opt_in_training,opt_in_marketing,created_at,google_id FROM users WHERE id='u1'"
+        )
+
+    with pytest.raises(IntegrityError):
+        await db_session.init_db()
+
+    with sqlite3.connect(old_db_path) as conn:
+        assert conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 2
+        assert "email_verified" not in {row[1] for row in conn.execute("PRAGMA table_info(users)")}
+
+
+async def test_unknown_missing_column_requires_explicit_migration(startup_db, old_db_path):
+    with sqlite3.connect(old_db_path) as conn:
+        conn.execute("ALTER TABLE users DROP COLUMN password_hash")
+
+    with pytest.raises(RuntimeError, match="users.password_hash"):
+        await db_session.init_db()
+
+    with sqlite3.connect(old_db_path) as conn:
+        # Reject the entire plan before silently weakening constraints or changing rows.
+        assert "email_verified" not in {row[1] for row in conn.execute("PRAGMA table_info(users)")}
+        assert conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 1
+
+
+async def test_incorrect_google_index_blocks_startup(startup_db, old_db_path):
+    with sqlite3.connect(old_db_path) as conn:
+        conn.execute("ALTER TABLE users ADD COLUMN google_id VARCHAR(120)")
+        conn.execute("CREATE INDEX ix_users_google_id ON users(google_id)")
+    with pytest.raises(RuntimeError, match="Explicit index migration required"):
+        await db_session.init_db()
+    with sqlite3.connect(old_db_path) as conn:
+        assert "email_verified" not in {row[1] for row in conn.execute("PRAGMA table_info(users)")}
+
+
+async def test_concurrent_startup_is_idempotent(startup_db, old_db_path):
+    await asyncio.gather(db_session.init_db(), db_session.init_db())
+    with sqlite3.connect(old_db_path) as conn:
+        assert [row[1] for row in conn.execute("PRAGMA table_info(users)")].count("email_verified") == 1
+        assert conn.execute("SELECT email_verified FROM users WHERE id='u1'").fetchone() == (0,)
+
+
+async def test_register_after_real_startup(startup_db, monkeypatch, old_db_path):
+    from app.api.v1 import auth
+    from app.main import create_app
+
+    await db_session.init_db()
+    sessions = async_sessionmaker(startup_db, expire_on_commit=False)
+
+    async def test_db():
+        async with sessions() as session:
+            yield session
+
+    email_service = AsyncMock()
+    monkeypatch.setattr(auth, "get_email_service", lambda: email_service)
+    app = create_app()
+    app.dependency_overrides[get_db] = test_db
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post("/api/v1/auth/register", json={
+            "email": "new@example.com", "password": "test-password-123", "name": "신규사용자",
+        })
+        assert response.status_code == 200, response.text
+        assert response.json()["user"]["email_verified"] is False
+        duplicate = await client.post("/api/v1/auth/register", json={
+            "email": "new@example.com", "password": "test-password-123",
+        })
+        assert duplicate.status_code == 409
+
+    with sqlite3.connect(old_db_path) as conn:
+        assert conn.execute("SELECT name FROM users WHERE id='u1'").fetchone() == ("기존유저",)
+        assert conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 2

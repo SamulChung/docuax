@@ -33,10 +33,10 @@ export async function POST(req: NextRequest) {
   const arrayBuffer = await file.arrayBuffer();
 
   try {
-    // kordoc 동적 import (서버사이드 전용)
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { parse } = await import("kordoc");
-    const result = await parse(arrayBuffer);
+    // Preserve native ESM loading: kordoc's CommonJS entry contains import.meta
+    // and fails at runtime when webpack changes this import to require().
+    const { parse } = await import(/* webpackIgnore: true */ "kordoc");
+    const result = await parse(arrayBuffer, { formulaOcr: false });
 
     if (!result.success) {
       return NextResponse.json(
