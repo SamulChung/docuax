@@ -1,73 +1,50 @@
-/** @type {import('next').NextConfig} */
-const BACKEND = process.env.NEXT_PUBLIC_API_BASE || "https://docuax-production.up.railway.app";
+const CURRENT_BACKEND = "https://docuax-production-f113.up.railway.app";
+const configuredBackend = (
+  process.env.NEXT_PUBLIC_API_BASE || CURRENT_BACKEND
+).trim().replace(/\/+$/, "");
+// Existing Vercel environments can still override the new default with the
+// retired Railway hostname. Migrate that exact alias; preserve custom URLs.
+const BACKEND = configuredBackend === "https://docuax-production.up.railway.app"
+  ? CURRENT_BACKEND
+  : configuredBackend;
 
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // kordoc → @huggingface/transformers → onnxruntime-node (네이티브 바이너리)
-  // webpack이 .node 바이너리를 번들링하려 해서 빌드 실패 → 외부 패키지로 지정
-  serverExternalPackages: [
-    "kordoc",
-    "@huggingface/transformers",
-    "onnxruntime-node",
-    "sharp",
-  ],
-  // NEXT_PUBLIC_API_BASE를 클라이언트 번들에 빌드 타임 삽입
-  // → 브라우저가 Railway에 직접 요청해 Vercel 서버사이드 SSRF 차단 우회
-  env: {
-    NEXT_PUBLIC_API_BASE: BACKEND,
+  experimental: {
+    // Next.js 14 uses this name; serverExternalPackages is a Next.js 15 option.
+    serverComponentsExternalPackages: ["kordoc"],
+    outputFileTracingIncludes: {
+      // kordoc loads CFB through createRequire(import.meta.url), which Next 14
+      // does not discover automatically when tracing its ESM entry point.
+      "/api/parse-hwp": [
+        "./node_modules/cfb/**/*",
+        "./node_modules/adler-32/**/*",
+        "./node_modules/crc-32/**/*",
+      ],
+    },
+    outputFileTracingExcludes: {
+      // HWP/HWPX parsing does not use kordoc's optional PDF formula OCR.
+      // Tracing those GPU/native dependencies produced a ~777 MiB function.
+      "/api/parse-hwp": [
+        "./node_modules/onnxruntime-node/**/*",
+        "./node_modules/onnxruntime-web/**/*",
+        "./node_modules/onnxruntime-common/**/*",
+        "./node_modules/@huggingface/**/*",
+        "./node_modules/@hyzyla/pdfium/**/*",
+        "./node_modules/sharp/**/*",
+        "./node_modules/@img/**/*",
+        // Node 20 installs canvas prebuilt binaries (~179 MiB) for PDF support.
+        "./node_modules/canvas/**/*",
+        "./node_modules/@napi-rs/canvas/**/*",
+      ],
+    },
   },
-  /**
-   * webpack 커스텀 설정
-   * serverExternalPackages 로도 .node 바이너리 번들링을 막지 못하는 경우
-   * externals + ignore-loader 로 이중 차단
-   */
-  webpack(config, { isServer }) {
-    if (isServer) {
-      // onnxruntime-node 및 @huggingface/transformers 를 외부 패키지로 처리
-      const existingExternals = Array.isArray(config.externals)
-        ? config.externals
-        : config.externals
-        ? [config.externals]
-        : [];
-
-      config.externals = [
-        ...existingExternals,
-        ({ request }, callback) => {
-          const EXTERNAL_PKGS = [
-            "onnxruntime-node",
-            "@huggingface/transformers",
-            "kordoc",
-            "sharp",
-          ];
-          if (
-            EXTERNAL_PKGS.some(
-              (pkg) => request === pkg || request.startsWith(pkg + "/")
-            )
-          ) {
-            return callback(null, `commonjs ${request}`);
-          }
-          callback();
-        },
-      ];
-    }
-
-    // .node 네이티브 바이너리 파일을 빈 모듈로 처리 (빌드 타임 오류 방지)
-    config.module.rules.push({
-      test: /\.node$/,
-      use: "null-loader",
-    });
-
-    return config;
-  },
+  // Build-time public API address for direct browser requests to Railway.
+  env: { NEXT_PUBLIC_API_BASE: BACKEND },
   async rewrites() {
-    // 로컬 개발 전용 (NEXT_PUBLIC_API_BASE 미설정 시 /api/* → localhost:8000)
     if (process.env.NEXT_PUBLIC_API_BASE) return [];
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${BACKEND}/api/:path*`,
-      },
-    ];
+    return [{ source: "/api/:path*", destination: `${BACKEND}/api/:path*` }];
   },
 };
 

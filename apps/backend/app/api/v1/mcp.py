@@ -1,7 +1,7 @@
 """MCP(Model Context Protocol) 서버 스펙 및 도구 실행 엔드포인트."""
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from app.core.config import get_settings
@@ -9,20 +9,16 @@ from app.core.config import get_settings
 router = APIRouter()
 
 
-def _base_url() -> str:
+def _base_url(request: Request) -> str:
     s = get_settings()
-    # Try common attribute names for public URL
-    for attr in ("public_url", "frontend_url", "app_url"):
-        val = getattr(s, attr, None)
-        if val:
-            return str(val).rstrip("/")
-    return "https://docuax-production.up.railway.app"
+    # FRONTEND_URL is for email links, not backend MCP endpoints.
+    return (s.public_url.strip() or str(request.base_url)).rstrip("/")
 
 
 @router.get("/mcp/spec")
-async def mcp_spec() -> dict:
+async def mcp_spec(request: Request) -> dict:
     """MCP 서버 스펙 반환."""
-    base = _base_url()
+    base = _base_url(request)
     return {
         "name": "DocuAX",
         "version": "1.0.0",

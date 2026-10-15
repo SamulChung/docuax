@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Copy, Check } from "lucide-react";
 
-const API = process.env.NEXT_PUBLIC_API_BASE || "https://docuax-production.up.railway.app";
+const API = process.env.NEXT_PUBLIC_API_BASE || "https://docuax-production-f113.up.railway.app";
 
 const CONFIGS = {
   claude: {

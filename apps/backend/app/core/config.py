@@ -8,7 +8,6 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -26,6 +25,7 @@ class Settings(BaseSettings):
     app_host: str = "0.0.0.0"
     app_port: int = 8000
     app_secret_key: str = "change-me"
+    public_url: str = ""  # 외부 백엔드 API 주소 (예: Railway 서비스 도메인)
 
     # ── DB ──
     database_url: str = "sqlite+aiosqlite:///./docuax.db"
