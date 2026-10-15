@@ -1,6 +1,12 @@
-const BACKEND = (
-  process.env.NEXT_PUBLIC_API_BASE || "https://docuax-production-f113.up.railway.app"
+const CURRENT_BACKEND = "https://docuax-production-f113.up.railway.app";
+const configuredBackend = (
+  process.env.NEXT_PUBLIC_API_BASE || CURRENT_BACKEND
 ).trim().replace(/\/+$/, "");
+// Existing Vercel environments can still override the new default with the
+// retired Railway hostname. Migrate that exact alias; preserve custom URLs.
+const BACKEND = configuredBackend === "https://docuax-production.up.railway.app"
+  ? CURRENT_BACKEND
+  : configuredBackend;
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -22,8 +28,15 @@ const nextConfig = {
       // Tracing those GPU/native dependencies produced a ~777 MiB function.
       "/api/parse-hwp": [
         "./node_modules/onnxruntime-node/**/*",
+        "./node_modules/onnxruntime-web/**/*",
+        "./node_modules/onnxruntime-common/**/*",
         "./node_modules/@huggingface/**/*",
         "./node_modules/@hyzyla/pdfium/**/*",
+        "./node_modules/sharp/**/*",
+        "./node_modules/@img/**/*",
+        // Node 20 installs canvas prebuilt binaries (~179 MiB) for PDF support.
+        "./node_modules/canvas/**/*",
+        "./node_modules/@napi-rs/canvas/**/*",
       ],
     },
   },

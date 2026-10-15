@@ -13,8 +13,12 @@ const size = sources.reduce((sum, file) => sum + fs.statSync(file).size, 0);
 const mib = (size / 1024 ** 2).toFixed(1);
 
 // Leave room under Vercel's default 250 MB limit for platform/runtime files.
+if (size >= 200 * 1024 ** 2) {
+  console.error(sources.map((file) => ({ file: path.relative(root, file), size: fs.statSync(file).size }))
+    .sort((a, b) => b.size - a.size).slice(0, 10));
+}
 assert(size < 200 * 1024 ** 2, `HWP function trace is ${mib} MiB (budget: 200 MiB)`);
-assert(!sources.some((file) => /node_modules\/(?:onnxruntime-node|@huggingface|@hyzyla\/pdfium)\//.test(file)),
+assert(!sources.some((file) => /node_modules\/(?:onnxruntime-(?:node|web|common)|@huggingface|@hyzyla\/pdfium|sharp|@img|canvas|@napi-rs\/canvas)\//.test(file)),
   "Unused PDF OCR dependencies leaked into the HWP function");
 
 async function checkPackagedRoute() {
